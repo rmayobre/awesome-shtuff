@@ -65,59 +65,46 @@ Validate required inputs and exit with an error if they are missing or invalid.
 
 ### 3. Container Creation
 
-Every install script **must** create an LXC container to host the installed software. Prompt the user for container configuration before creating it.
+Every install script **must** create a container to host the installed software. Use the unified `container` command, which automatically selects PCT (Proxmox) or LXC based on the host environment. Prompt the user for container configuration before creating it.
 
 ```bash
 # Collect container configuration
-question "Container name [<project>]"   && CT_NAME="${answer:-<project>}"
+question "Container name [<project>]"     && CT_NAME="${answer:-<project>}"
 question "Container hostname [<project>]" && CT_HOSTNAME="${answer:-<project>}"
-question "Memory in MB [512]"           && CT_MEMORY="${answer:-512}"
-question "CPU cores [1]"               && CT_CORES="${answer:-1}"
-question "Disk size in GB [8]"         && CT_DISK="${answer:-8}"
+question "Memory in MB [512]"             && CT_MEMORY="${answer:-512}"
+question "CPU cores [1]"                  && CT_CORES="${answer:-1}"
+question "Disk size in GB [8]"            && CT_DISK="${answer:-8}"
 
 # Create the container
-lxc_create \
+container create \
     --name "$CT_NAME" \
     --hostname "$CT_HOSTNAME" \
-    --dist "debian" \
-    --release "trixie" \
     --memory "$CT_MEMORY" \
     --cores "$CT_CORES" \
     --disk-size "$CT_DISK" \
     --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # Start the container
-lxc_start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
-```
-
-For Proxmox VE environments, use `pct_create` instead of `lxc_create`:
-
-```bash
-pct_create \
-    --vmid "$CT_VMID" \
-    --template "$CT_TEMPLATE" \
-    --hostname "$CT_HOSTNAME" \
-    --memory "$CT_MEMORY" \
-    --cores "$CT_CORES" \
-    --disk-size "$CT_DISK" \
-    --style "$SPINNER_LOADING_STYLE" || exit 1
+container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 ```
 
 ### 4. Software Installation Inside the Container
 
-After creating the container, install the project's dependencies and software **inside** it using `lxc_exec`:
+After creating the container, install the project's dependencies and software **inside** it using `container exec`. Run commands in the background and monitor them with `monitor`:
 
 ```bash
 # Update packages inside the container
-lxc_exec --name "$CT_NAME" --cmd "apt-get update -qq" \
-    --style "$SPINNER_LOADING_STYLE" --message "Updating packages" || exit 1
+container exec --name "$CT_NAME" -- apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
 # Install dependencies inside the container
-lxc_exec --name "$CT_NAME" --cmd "apt-get install -y curl wget <dep1> <dep2>" \
-    --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" || exit 1
+container exec --name "$CT_NAME" -- apt-get install -y curl wget <dep1> <dep2> &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 # Push configuration files into the container
-lxc_push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
+container push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
 ```
 
 ### 5. Logging
@@ -167,36 +154,36 @@ confirm "Enable HTTPS?"                   && ENABLE_HTTPS="$answer"
 
 info "Creating container for <project-name>..."
 
-lxc_create \
+container create \
     --name "$CT_NAME" \
     --hostname "$CT_HOSTNAME" \
-    --dist "debian" \
-    --release "trixie" \
     --memory "$CT_MEMORY" \
     --cores "$CT_CORES" \
     --disk-size "$CT_DISK" \
     --style "$SPINNER_LOADING_STYLE" || exit 1
 
-lxc_start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
+container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-lxc_exec --name "$CT_NAME" --cmd "apt-get update -qq" \
-    --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" || exit 1
+container exec --name "$CT_NAME" -- apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-lxc_exec --name "$CT_NAME" --cmd "apt-get install -y <dep1> <dep2>" \
-    --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" || exit 1
+container exec --name "$CT_NAME" -- apt-get install -y <dep1> <dep2> &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 # ─── Installation Steps ───────────────────────────────────────────────────────
 
 info "Installing <project-name>..."
 # ... project-specific installation logic inside the container ...
-# lxc_exec --name "$CT_NAME" --cmd "<install command>"
-# lxc_push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
+# container exec --name "$CT_NAME" -- <install command>
+# container push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
 
 # ─── Service Setup (if applicable) ────────────────────────────────────────────
 
-# lxc_exec --name "$CT_NAME" --cmd "systemctl enable --now <project>"
+# container exec --name "$CT_NAME" -- systemctl enable --now <project>
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
