@@ -1,5 +1,15 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+
+# ─── Download & Source shtuff ─────────────────────────────────────────────────
+
+SHTUFF_VERSION="1.2.0"
+SHTUFF_TARBALL="/tmp/shtuff-${SHTUFF_VERSION}.tar.gz"
+SHTUFF_DIR="/tmp/shtuff-${SHTUFF_VERSION}"
+
+curl -fsSL "https://github.com/rmayobre/shtuff/archive/refs/tags/v${SHTUFF_VERSION}.tar.gz" \
+    -o "$SHTUFF_TARBALL"
+tar -xzf "$SHTUFF_TARBALL" -C /tmp/
+source "${SHTUFF_DIR}/shtuff.sh"
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -29,13 +39,17 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Copy shtuff Into Container ───────────────────────────────────────────────
+
+container push --name "$CT_NAME" --source "$SHTUFF_DIR" --dest "/opt/shtuff"
+
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && update" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y curl git nginx &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install curl git nginx" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -43,7 +57,7 @@ container exec --name "$CT_NAME" -- bash -c "curl -fsSL https://deb.nodesource.c
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Setting up Node.js repository" \
     --success_msg "Node.js repository configured" --error_msg "Node.js repository setup failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y nodejs &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install nodejs" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Node.js" \
     --success_msg "Node.js installed" --error_msg "Node.js installation failed" || exit 1
 

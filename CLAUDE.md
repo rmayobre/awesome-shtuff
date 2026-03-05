@@ -8,13 +8,22 @@
 
 All install scripts **must** use [rmayobre/shtuff](https://github.com/rmayobre/shtuff) as the scripting framework. Always use the **latest release** (currently `v1.2.0`).
 
-Source shtuff at the top of every script:
+Download the shtuff release tarball and source it locally at the top of every script:
 
 ```bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+SHTUFF_VERSION="1.2.0"
+SHTUFF_TARBALL="/tmp/shtuff-${SHTUFF_VERSION}.tar.gz"
+SHTUFF_DIR="/tmp/shtuff-${SHTUFF_VERSION}"
+
+curl -fsSL "https://github.com/rmayobre/shtuff/archive/refs/tags/v${SHTUFF_VERSION}.tar.gz" \
+    -o "$SHTUFF_TARBALL"
+tar -xzf "$SHTUFF_TARBALL" -C /tmp/
+source "${SHTUFF_DIR}/shtuff.sh"
 ```
 
-When a new shtuff release is published, update the version tag across all scripts and this file.
+This downloads the release once, extracts it to `/tmp/`, and sources the local `shtuff.sh` entry point. The `$SHTUFF_DIR` variable is reused later to push shtuff into the container.
+
+When a new shtuff release is published, update `SHTUFF_VERSION` across all scripts and this file.
 
 ## Repository Structure
 
@@ -39,11 +48,19 @@ awesome-shtuff/
 
 ### 1. Shebang and shtuff Source
 
-Every script must begin with:
+Every script must begin with the shebang followed by the shtuff release download and local source block:
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+
+SHTUFF_VERSION="1.2.0"
+SHTUFF_TARBALL="/tmp/shtuff-${SHTUFF_VERSION}.tar.gz"
+SHTUFF_DIR="/tmp/shtuff-${SHTUFF_VERSION}"
+
+curl -fsSL "https://github.com/rmayobre/shtuff/archive/refs/tags/v${SHTUFF_VERSION}.tar.gz" \
+    -o "$SHTUFF_TARBALL"
+tar -xzf "$SHTUFF_TARBALL" -C /tmp/
+source "${SHTUFF_DIR}/shtuff.sh"
 ```
 
 ### 2. User Input for Configuration
@@ -88,18 +105,26 @@ container create \
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 ```
 
-### 4. Software Installation Inside the Container
+### 4. Copy shtuff Into the Container
 
-After creating the container, install the project's dependencies and software **inside** it using `container exec`. Run commands in the background and monitor them with `monitor`:
+After starting the container, push the locally downloaded shtuff directory into it. This allows all subsequent `container exec` commands to source shtuff and use its functions (e.g., `install`, `update`) inside the container.
+
+```bash
+container push --name "$CT_NAME" --source "$SHTUFF_DIR" --dest "/opt/shtuff"
+```
+
+### 5. Software Installation Inside the Container
+
+After copying shtuff, install the project's dependencies and software **inside** the container using `container exec`. Prefix each exec call with `source /opt/shtuff/shtuff.sh &&` to use shtuff's package management functions. Run commands in the background and monitor them with `monitor`:
 
 ```bash
 # Update packages inside the container
-container exec --name "$CT_NAME" -- apt-get update -qq &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && update" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
 # Install dependencies inside the container
-container exec --name "$CT_NAME" -- apt-get install -y curl wget <dep1> <dep2> &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install curl wget <dep1> <dep2>" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -107,7 +132,9 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" 
 container push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
 ```
 
-### 5. Logging
+Use shtuff's `install` and `update` functions rather than bare `apt-get` calls — they auto-detect the container's package manager and work across distributions.
+
+### 6. Logging
 
 Use shtuff's logging functions throughout:
 
@@ -116,7 +143,7 @@ Use shtuff's logging functions throughout:
 - `error "message"` — red, fatal errors (follow with `exit 1`)
 - `debug "message"` — verbose output (shown when `LOG_LEVEL=DEBUG`)
 
-### 6. Cleanup (Required)
+### 7. Cleanup (Required)
 
 Every install script **must** end with a dependency cleanup step on the **host** system:
 
@@ -132,7 +159,17 @@ This removes orphaned packages and clears the package manager cache on the host 
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+
+# ─── Download & Source shtuff ─────────────────────────────────────────────────
+
+SHTUFF_VERSION="1.2.0"
+SHTUFF_TARBALL="/tmp/shtuff-${SHTUFF_VERSION}.tar.gz"
+SHTUFF_DIR="/tmp/shtuff-${SHTUFF_VERSION}"
+
+curl -fsSL "https://github.com/rmayobre/shtuff/archive/refs/tags/v${SHTUFF_VERSION}.tar.gz" \
+    -o "$SHTUFF_TARBALL"
+tar -xzf "$SHTUFF_TARBALL" -C /tmp/
+source "${SHTUFF_DIR}/shtuff.sh"
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -164,13 +201,17 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Copy shtuff Into Container ───────────────────────────────────────────────
+
+container push --name "$CT_NAME" --source "$SHTUFF_DIR" --dest "/opt/shtuff"
+
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && update" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y <dep1> <dep2> &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install <dep1> <dep2>" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -197,5 +238,5 @@ info "<project-name> installed successfully in container '$CT_NAME'!"
 ## Updating shtuff Version
 
 When a new shtuff release is published:
-1. Update the version tag in the `source` line of every script (`v1.2.0` → new version)
+1. Update `SHTUFF_VERSION` in every script (`1.2.0` → new version, without the `v` prefix)
 2. Update the version reference in this CLAUDE.md
