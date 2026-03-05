@@ -199,4 +199,3 @@ info "<project-name> installed successfully in container '$CT_NAME'!"
 When a new shtuff release is published:
 1. Update the version tag in the `source` line of every script (`v1.2.0` → new version)
 2. Update the version reference in this CLAUDE.md
-3. Test all affected scripts after updating
