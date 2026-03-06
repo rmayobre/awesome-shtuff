@@ -111,30 +111,15 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Setting up shtuff in cont
 
 # ─── System Setup Inside Container ────────────────────────────────────────────
 
-case "$CT_DIST" in
-    debian|ubuntu)
-        container exec --name "$CT_NAME" -- bash -c \
-            "source /opt/shtuff/shtuff.sh && apt-get update -qq" &
-        monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-            --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+container exec --name "$CT_NAME" -- bash -c \
+    "source /opt/shtuff/shtuff.sh && update" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-        container exec --name "$CT_NAME" -- bash -c \
-            "source /opt/shtuff/shtuff.sh && apt-get upgrade -y -qq" &
-        monitor $! --style "$SPINNER_LOADING_STYLE" --message "Upgrading packages" \
-            --success_msg "Packages upgraded" --error_msg "Package upgrade failed" || exit 1
-
-        container exec --name "$CT_NAME" -- bash -c \
-            "source /opt/shtuff/shtuff.sh && apt-get install -y ca-certificates curl wget" &
-        monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
-            --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
-        ;;
-    alpine)
-        container exec --name "$CT_NAME" -- bash -c \
-            "source /opt/shtuff/shtuff.sh && apk add ca-certificates curl wget" &
-        monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
-            --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
-        ;;
-esac
+container exec --name "$CT_NAME" -- bash -c \
+    "source /opt/shtuff/shtuff.sh && install ca-certificates curl wget" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
+    --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
