@@ -1,31 +1,41 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+
+# ─── Bootstrap: Source shtuff from release tarball ───────────────────────────
+
+SHTUFF_TMP=$(mktemp -d)
+curl -sL "https://github.com/rmayobre/shtuff/releases/download/v1.2.0/shtuff-v1.2.0.tar.gz" \
+    | tar -xz -C "$SHTUFF_TMP"
+source "$SHTUFF_TMP/shtuff.sh"
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
 info "Configuring Ubuntu container installation..."
 
-options "Select Ubuntu release (20.04=focal, 22.04=jammy, 24.04=noble)" "focal" "jammy" "noble" \
-    && CT_RELEASE="$answer"
+if [[ -z "${CT_RELEASE:-}" ]]; then
+    options "Select Ubuntu release (20.04=focal, 22.04=jammy, 24.04=noble)" "focal" "jammy" "noble" \
+        && CT_RELEASE="$answer"
+fi
 
-question "Container name [ubuntu]"     && CT_NAME="${answer:-ubuntu}"
-question "Container hostname [ubuntu]" && CT_HOSTNAME="${answer:-ubuntu}"
+if [[ -z "${CT_NAME:-}" ]]; then
+    question "Container name [ubuntu]" && CT_NAME="${answer:-ubuntu}"
+fi
 
-# Memory: use CT_MEMORY env var if set, otherwise prompt
+if [[ -z "${CT_HOSTNAME:-}" ]]; then
+    question "Container hostname [ubuntu]" && CT_HOSTNAME="${answer:-ubuntu}"
+fi
+
 if [[ -n "${CT_MEMORY:-}" ]]; then
     info "Using CT_MEMORY from environment: ${CT_MEMORY} MB"
 else
     question "Memory in MB [256]" && CT_MEMORY="${answer:-256}"
 fi
 
-# CPU cores: use CT_CORES env var if set, otherwise prompt
 if [[ -n "${CT_CORES:-}" ]]; then
     info "Using CT_CORES from environment: ${CT_CORES}"
 else
     question "CPU cores [1]" && CT_CORES="${answer:-1}"
 fi
 
-# Disk size: use CT_DISK env var if set, otherwise prompt
 if [[ -n "${CT_DISK:-}" ]]; then
     info "Using CT_DISK from environment: ${CT_DISK} GB"
 else
@@ -57,21 +67,35 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Copy shtuff into Container ───────────────────────────────────────────────
+
+container push --name "$CT_NAME" --source "$SHTUFF_TMP" --dest "/opt/shtuff"
+
+container exec --name "$CT_NAME" -- bash -c \
+    "echo 'source /opt/shtuff/shtuff.sh' > /etc/profile.d/shtuff.sh && chmod +x /etc/profile.d/shtuff.sh" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Setting up shtuff in container" \
+    --success_msg "shtuff configured" --error_msg "shtuff setup failed" || exit 1
+
 # ─── System Setup Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
+container exec --name "$CT_NAME" -- bash -c \
+    "source /opt/shtuff/shtuff.sh && apt-get update -qq" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get upgrade -y -qq &
+container exec --name "$CT_NAME" -- bash -c \
+    "source /opt/shtuff/shtuff.sh && apt-get upgrade -y -qq" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Upgrading packages" \
     --success_msg "Packages upgraded" --error_msg "Package upgrade failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y ca-certificates curl wget &
+container exec --name "$CT_NAME" -- bash -c \
+    "source /opt/shtuff/shtuff.sh && apt-get install -y ca-certificates curl wget" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
     --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
+
+rm -rf "$SHTUFF_TMP"
 
 clean &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
