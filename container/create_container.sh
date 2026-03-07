@@ -113,7 +113,7 @@ container create \
     --disk-size "$CT_DISK" \
     --dist "$CT_DIST" \
     --release "$CT_RELEASE" \
-    --storage "btrfs" \ # Need to configure storage type
+    --storage "$CT_DISK_TYPE" \ # Need to configure storage type
     $CT_TEMPLATE_FLAG || exit 1
 
 container start --name "$CT_NAME" || exit 1
