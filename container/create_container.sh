@@ -2,8 +2,11 @@
 
 # ─── Bootstrap: Source shtuff from release tarball ───────────────────────────
 
+#IS_DRY_RUN=true
 LOG_LEVEL="$INFO_LEVEL"
 LOG_FILE="$(mktemp -d)/log.txt"
+
+echo "Logs can be found at: $LOG_FILE"
 
 readonly VERSION="v1.2.0"
 readonly SHTUFF_TMP="/tmp/shtuff-${VERSION}"
@@ -16,26 +19,34 @@ if [[ ! -f "$SHTUFF_FILE" ]]; then
         | tar -xz -C "${SHTUFF_TMP}"
 fi
 
-source SHTUFF_FILE
+source "$SHTUFF_FILE"
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
 info "Configuring distro container installation..."
 
 if [[ -z "${CT_DIST:-}" ]]; then
-    # shtuff is yet compatible with ash shell.
-    # options "Select distribution" "debian" "ubuntu" "alpine" && CT_DIST="$answer"
-    options "Select distribution" "debian" "ubuntu" && CT_DIST="$answer"
+    options "Select distribution" \
+        --choice "debian" \
+        --choice "ubuntu" \
+        && CT_DIST="$answer"
+        # --choice "alpine" \-- shtuff is yet compatible with ash shell
+        # && CT_DIST="$answer"
 fi
 
 if [[ -z "${CT_RELEASE:-}" ]]; then
     case "$CT_DIST" in
         debian)
-            options "Select Debian release (11=bullseye, 12=bookworm)" "bullseye" "bookworm" \
+            options "Select Debian release (11=bullseye, 12=bookworm)" \
+                --choice "bullseye" \
+                --choice "bookworm" \
                 && CT_RELEASE="$answer"
             ;;
         ubuntu)
-            options "Select Ubuntu release (20.04=focal, 22.04=jammy, 24.04=noble)" "focal" "jammy" "noble" \
+            options "Select Ubuntu release (20.04=focal, 22.04=jammy, 24.04=noble)" \
+                --choice "focal" \
+                --choice "jammy" \
+                --choice "noble" \
                 && CT_RELEASE="$answer"
             ;;
         # shtuff is yet compatible with ash shell.
@@ -72,6 +83,16 @@ else
     question "Disk size in GB [4]" && CT_DISK="${answer:-4}"
 fi
 
+if [[ -n "${CT_DISK_TYPE:-}" ]]; then
+    info "Using CT_DISK_TYPE from environment: ${CT_DISK_TYPE} GB"
+else
+    option "Select Storage type" \
+        --choice "dir" \
+        --choice "btrfs" \
+        --choice "zfs" \
+        && CT_DISK_TYPE="${answer:-4}"
+fi
+
 question "PCT template path (leave blank for LXC auto-download)" \
     && CT_TEMPLATE="${answer:-}"
 
@@ -92,17 +113,16 @@ container create \
     --disk-size "$CT_DISK" \
     --dist "$CT_DIST" \
     --release "$CT_RELEASE" \
-    $CT_TEMPLATE_FLAG \
-    --style "$SPINNER_LOADING_STYLE" || exit 1
+    --storage "btrfs" \ # Need to configure storage type
+    $CT_TEMPLATE_FLAG || exit 1
 
-container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
+container start --name "$CT_NAME" || exit 1
 
 # ─── Copy shtuff into Container ───────────────────────────────────────────────
 
-container push --name "$CT_NAME" --source "$SHTUFF_TMP" --dest "/opt/shtuff"
+container push --name "$CT_NAME" "$SHTUFF_TMP" "/opt/shtuff"
 
-container exec --name "$CT_NAME" -- bash -c \
-    "echo 'source /opt/shtuff/shtuff.sh' > /etc/profile.d/shtuff.sh && chmod +x /etc/profile.d/shtuff.sh" &
+container exec --name "$CT_NAME" -- bash -c "echo 'source /opt/shtuff/shtuff.sh' > /etc/profile.d/shtuff.sh && chmod +x /etc/profile.d/shtuff.sh" &
 monitor $! \
     --message "Setting up shtuff in container" \
     --success_msg "shtuff configured" \
@@ -110,15 +130,13 @@ monitor $! \
 
 # ─── System Setup Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- bash -c \
-    "source /opt/shtuff/shtuff.sh && update" &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && update" &
 monitor $! \
     --message "Updating packages" \
     --success_msg "Packages updated" \
     --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- bash -c \
-    "source /opt/shtuff/shtuff.sh && install ca-certificates curl wget" &
+container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install ca-certificates curl wget" &
 monitor $! \
     --message "Installing base utilities" \
     --success_msg "Base utilities installed" \
