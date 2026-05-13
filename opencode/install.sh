@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -55,13 +56,20 @@ container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Updating packages in container" \
-    --success_msg "Packages updated" \
-    --error_msg "Package update failed" || exit 1
+CONTAINER_SCRIPT
+#!/bin/bash
+apt-get update -qq
+apt-get install -y curl ca-certificates
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- apt-get install -y curl ca-certificates &
+container shell-script --name "$CT_NAME" --path /opt/opencode-deps.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying dependency script" \
+    --success_msg "Dependency script deployed" \
+    --error_msg "Dependency script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/opencode-deps.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing dependencies" \
     --success_msg "Dependencies installed" \
@@ -71,7 +79,19 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 info "Installing OpenCode in container '$CT_NAME'..."
 
-container exec --name "$CT_NAME" -- bash -c "curl -fsSL https://opencode.ai/install | bash" &
+CONTAINER_SCRIPT
+#!/bin/bash
+curl -fsSL https://opencode.ai/install | bash
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/opencode-install.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying OpenCode installer" \
+    --success_msg "Installer deployed" \
+    --error_msg "Installer deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/opencode-install.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing OpenCode" \
     --success_msg "OpenCode installed" \
@@ -79,25 +99,38 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Service Setup ────────────────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- bash -c \
-    "printf '[Unit]\nDescription=OpenCode Web UI\nAfter=network.target\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/opencode web --hostname 0.0.0.0 --port ${OC_PORT}\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' \
-    > /etc/systemd/system/opencode.service" &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Creating OpenCode systemd service" \
-    --success_msg "Service created" \
-    --error_msg "Service creation failed" || exit 1
+CONTAINER_SCRIPT
+#!/bin/bash
+cat > /etc/systemd/system/opencode.service <<EOF
+[Unit]
+Description=OpenCode Web UI
+After=network.target
 
-container exec --name "$CT_NAME" -- systemctl daemon-reload &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Reloading systemd" \
-    --success_msg "Systemd reloaded" \
-    --error_msg "Systemd reload failed" || exit 1
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/opencode web --hostname 0.0.0.0 --port $OC_PORT
+Restart=on-failure
+RestartSec=5
 
-container exec --name "$CT_NAME" -- systemctl enable --now opencode &
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable --now opencode
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/opencode-service.sh \
+    --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Enabling OpenCode service" \
+    --message "Deploying service setup script" \
+    --success_msg "Service setup script deployed" \
+    --error_msg "Service setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/opencode-service.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Configuring OpenCode service" \
     --success_msg "OpenCode service enabled and started" \
-    --error_msg "Failed to enable OpenCode service" || exit 1
+    --error_msg "Failed to configure OpenCode service" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
