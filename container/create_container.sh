@@ -1,25 +1,12 @@
 #!/bin/bash
-
-# ─── Bootstrap: Source shtuff from release tarball ───────────────────────────
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 #IS_DRY_RUN=true
 LOG_LEVEL="$INFO_LEVEL"
 LOG_FILE="$(mktemp -d)/log.txt"
 
-echo "Logs can be found at: $LOG_FILE"
-
-readonly VERSION="v1.2.0"
-readonly SHTUFF_TMP="/tmp/shtuff-${VERSION}"
-readonly SHTUFF_FILE="${SHTUFF_TMP}/shtuff.sh"
-
-# If shtuff does not exist, download.
-if [[ ! -f "$SHTUFF_FILE" ]]; then
-    mkdir -p "${SHTUFF_TMP}"
-    curl -sL "https://github.com/rmayobre/shtuff/releases/download/${VERSION}/shtuff-${VERSION}.tar.gz" \
-        | tar -xz -C "${SHTUFF_TMP}"
-fi
-
-source "$SHTUFF_FILE"
+info "Logs can be found at: $LOG_FILE"
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -86,7 +73,7 @@ fi
 if [[ -n "${CT_DISK_TYPE:-}" ]]; then
     info "Using CT_DISK_TYPE from environment: ${CT_DISK_TYPE} GB"
 else
-    option "Select Storage type" \
+    options "Select Storage type" \
         --choice "dir" \
         --choice "btrfs" \
         --choice "zfs" \
@@ -113,31 +100,28 @@ container create \
     --disk-size "$CT_DISK" \
     --dist "$CT_DIST" \
     --release "$CT_RELEASE" \
-    --storage "$CT_DISK_TYPE" \ # Need to configure storage type
+    --storage "$CT_DISK_TYPE" \
     $CT_TEMPLATE_FLAG || exit 1
 
-container start --name "$CT_NAME" || exit 1
-
-# ─── Copy shtuff into Container ───────────────────────────────────────────────
-
-container push --name "$CT_NAME" "$SHTUFF_TMP" "/opt/shtuff"
-
-container exec --name "$CT_NAME" -- bash -c "echo 'source /opt/shtuff/shtuff.sh' > /etc/profile.d/shtuff.sh && chmod +x /etc/profile.d/shtuff.sh" &
-monitor $! \
-    --message "Setting up shtuff in container" \
-    --success_msg "shtuff configured" \
-    --error_msg "shtuff setup failed" || exit 1
+container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # ─── System Setup Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && update" &
-monitor $! \
-    --message "Updating packages" \
-    --success_msg "Packages updated" \
-    --error_msg "Package update failed" || exit 1
+CONTAINER_SCRIPT
+#!/bin/bash
+apt-get update -qq
+apt-get install -y ca-certificates curl wget
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- bash -c "source /opt/shtuff/shtuff.sh && install ca-certificates curl wget" &
-monitor $! \
+container shell-script --name "$CT_NAME" --path /opt/setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying setup script" \
+    --success_msg "Setup script deployed" \
+    --error_msg "Setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing base utilities" \
     --success_msg "Base utilities installed" \
     --error_msg "Base utility installation failed" || exit 1
@@ -145,7 +129,7 @@ monitor $! \
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
 clean &
-monitor $! \
+monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Cleaning up" \
     --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"
