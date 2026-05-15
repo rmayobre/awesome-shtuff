@@ -38,7 +38,13 @@ question "Disk size in GB [20]"        && CT_DISK="${answer:-20}"
 # Ollama configuration
 question "Ollama listen port [11434]"  && OLLAMA_PORT="${answer:-11434}"
 
+CT_GPU=""
+CT_GPU_PCIE="no"
 confirm "Enable GPU passthrough (requires GPU on host)?" && ENABLE_GPU="$answer"
+if [[ "$ENABLE_GPU" == "true" || "$ENABLE_GPU" == "yes" ]]; then
+    gpu_select && CT_GPU="$answer"
+    confirm "Enable PCIe passthrough mode (PCT only)?" && CT_GPU_PCIE="$answer"
+fi
 
 question "Pull a model after install? (e.g. llama3, mistral — leave blank to skip)" \
     && OLLAMA_MODEL="${answer:-}"
@@ -58,8 +64,11 @@ CONTAINER_ARGS=(
     --style "$SPINNER_LOADING_STYLE"
 )
 
-if [[ "$ENABLE_GPU" == "true" || "$ENABLE_GPU" == "yes" ]]; then
-    CONTAINER_ARGS+=(--gpu)
+if [[ -n "$CT_GPU" ]]; then
+    CONTAINER_ARGS+=(--gpu "$CT_GPU")
+    if [[ "$CT_GPU_PCIE" == "true" || "$CT_GPU_PCIE" == "yes" ]]; then
+        CONTAINER_ARGS+=(--pcie)
+    fi
 fi
 
 container create "${CONTAINER_ARGS[@]}" || exit 1
