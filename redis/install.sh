@@ -43,27 +43,48 @@ info "Installing and configuring Redis..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y redis-server
-sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf
-sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y redis-server &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
+    --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
+
+sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf \
+    || { error "Failed to configure Redis port"; exit 1; }
+sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf \
+    || { error "Failed to configure Redis bind address"; exit 1; }
+
 if [[ -n "${REDIS_PASSWORD}" ]]; then
-    sed -i 's/^# requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf
-    sed -i 's/^requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf
+    sed -i 's/^# requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf \
+        || { error "Failed to configure Redis password"; exit 1; }
+    sed -i 's/^requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf \
+        || { error "Failed to configure Redis password"; exit 1; }
 fi
+
 case "${REDIS_PERSISTENCE}" in
     rdb)
-        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
     aof)
-        sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf
+        sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
     none)
-        sed -i 's/^save /#save /' /etc/redis/redis.conf
-        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf
+        sed -i 's/^save /#save /' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
 esac
-systemctl enable --now redis-server
+
+systemctl enable --now redis-server &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Redis service" \
+    --success_msg "Redis service started" --error_msg "Failed to start Redis service" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/redis-setup.sh \

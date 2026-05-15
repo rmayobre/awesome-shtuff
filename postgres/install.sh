@@ -44,14 +44,31 @@ info "Installing and configuring PostgreSQL..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y postgresql postgresql-contrib
-systemctl enable --now postgresql
-su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';\"" postgres
-su -c "psql -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y postgresql postgresql-contrib &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
+    --success_msg "PostgreSQL installed" --error_msg "PostgreSQL installation failed" || exit 1
+
+systemctl enable --now postgresql &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting PostgreSQL service" \
+    --success_msg "PostgreSQL service started" --error_msg "Failed to start PostgreSQL service" || exit 1
+
+su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';\"" postgres \
+    || { error "Failed to create database user"; exit 1; }
+su -c "psql -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres \
+    || { error "Failed to create database"; exit 1; }
+
 if [[ "${PG_PORT}" != "5432" ]]; then
-    sed -i "s/^#port = 5432/port = ${PG_PORT}/" /etc/postgresql/*/main/postgresql.conf
-    systemctl restart postgresql
+    sed -i "s/^#port = 5432/port = ${PG_PORT}/" /etc/postgresql/*/main/postgresql.conf \
+        || { error "Failed to write port configuration"; exit 1; }
+    systemctl restart postgresql &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting PostgreSQL" \
+        --success_msg "PostgreSQL restarted" --error_msg "Failed to restart PostgreSQL" || exit 1
 fi
 CONTAINER_SCRIPT_EOD
 

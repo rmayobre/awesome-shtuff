@@ -20,8 +20,15 @@ container start --name "$CONTAINER_NAME" --style "$SPINNER_LOADING_STYLE" || exi
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y ca-certificates curl wget
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y ca-certificates curl wget &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
+    --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CONTAINER_NAME" --path /opt/setup.sh \

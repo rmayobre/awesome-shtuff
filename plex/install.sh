@@ -45,19 +45,42 @@ info "Installing Plex Media Server..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y curl wget gnupg2 ca-certificates
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y curl wget gnupg2 ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
 curl -fsSL https://downloads.plex.tv/plex-keys/PlexSign.key \
-    | gpg --dearmor -o /usr/share/keyrings/plex-archive-keyring.gpg
+    | gpg --dearmor -o /usr/share/keyrings/plex-archive-keyring.gpg \
+    || { error "Failed to add Plex signing key"; exit 1; }
+
 echo 'deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downloads.plex.tv/repo/deb public main' \
-    > /etc/apt/sources.list.d/plexmediaserver.list
-apt-get update -qq
-apt-get install -y plexmediaserver
+    > /etc/apt/sources.list.d/plexmediaserver.list \
+    || { error "Failed to add Plex repository"; exit 1; }
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+apt-get install -y plexmediaserver &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
+    --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
+
 if [[ -n "${MEDIA_PATH}" ]]; then
-    mkdir -p /media
-    echo '${MEDIA_PATH} /media none bind,ro 0 0' >> /etc/fstab
+    mkdir -p /media \
+        || { error "Failed to create /media directory"; exit 1; }
+    echo '${MEDIA_PATH} /media none bind,ro 0 0' >> /etc/fstab \
+        || { error "Failed to configure media bind mount"; exit 1; }
 fi
-systemctl enable --now plexmediaserver
+
+systemctl enable --now plexmediaserver &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Plex Media Server" \
+    --success_msg "Plex Media Server started" --error_msg "Failed to start Plex Media Server" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/plex-setup.sh \

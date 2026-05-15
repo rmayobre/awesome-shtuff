@@ -81,16 +81,38 @@ info "Installing Ollama in container '$CT_NAME'..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y curl ca-certificates
-curl -fsSL https://ollama.com/install.sh | sh
-mkdir -p /etc/systemd/system/ollama.service.d
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y curl ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
+curl -fsSL https://ollama.com/install.sh | sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Ollama" \
+    --success_msg "Ollama installed" --error_msg "Ollama installation failed" || exit 1
+
+mkdir -p /etc/systemd/system/ollama.service.d \
+    || { error "Failed to create systemd override directory"; exit 1; }
 printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}"\n' \
-    > /etc/systemd/system/ollama.service.d/override.conf
-systemctl daemon-reload
-systemctl enable --now ollama
+    > /etc/systemd/system/ollama.service.d/override.conf \
+    || { error "Failed to write Ollama service override"; exit 1; }
+
+systemctl daemon-reload &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Reloading systemd" \
+    --success_msg "systemd reloaded" --error_msg "Failed to reload systemd" || exit 1
+
+systemctl enable --now ollama &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Ollama service" \
+    --success_msg "Ollama service started" --error_msg "Failed to start Ollama service" || exit 1
+
 if [[ -n "${OLLAMA_MODEL}" ]]; then
-    ollama pull "${OLLAMA_MODEL}"
+    ollama pull "${OLLAMA_MODEL}" &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Pulling model '${OLLAMA_MODEL}'" \
+        --success_msg "Model pulled" --error_msg "Failed to pull model" || exit 1
 fi
 CONTAINER_SCRIPT_EOD
 

@@ -54,16 +54,36 @@ info "Installing and configuring MariaDB..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y mariadb-server
-systemctl enable --now mariadb
-mariadb -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}'; DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;"
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y mariadb-server &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
+    --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
+
+systemctl enable --now mariadb &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MariaDB service" \
+    --success_msg "MariaDB service started" --error_msg "Failed to start MariaDB service" || exit 1
+
+mariadb -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}'; DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MariaDB" \
+    --success_msg "MariaDB secured" --error_msg "Failed to secure MariaDB" || exit 1
+
 if [[ "${DB_PORT}" != "3306" ]]; then
-    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mariadb.conf.d/50-server.cnf
-    systemctl restart mariadb
+    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mariadb.conf.d/50-server.cnf \
+        || { error "Failed to write port configuration"; exit 1; }
+    systemctl restart mariadb &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting MariaDB" \
+        --success_msg "MariaDB restarted" --error_msg "Failed to restart MariaDB" || exit 1
 fi
+
 if [[ -n "${DB_NAME}" ]]; then
-    mariadb -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;"
+    mariadb -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;" &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${DB_NAME}' and user '${DB_USER}'" \
+        --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 fi
 CONTAINER_SCRIPT_EOD
 

@@ -54,18 +54,41 @@ info "Installing and configuring MySQL..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-echo "mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}" | debconf-set-selections
-echo "mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}" | debconf-set-selections
-apt-get install -y mysql-server
-systemctl enable --now mysql
-mysql -u root -p'${DB_ROOT_PASSWORD}' -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;"
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+echo "mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
+    || { error "Failed to pre-configure MySQL root password"; exit 1; }
+echo "mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
+    || { error "Failed to pre-configure MySQL root password confirmation"; exit 1; }
+
+apt-get install -y mysql-server &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
+    --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
+
+systemctl enable --now mysql &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
+    --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
+
+mysql -u root -p'${DB_ROOT_PASSWORD}' -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL" \
+    --success_msg "MySQL secured" --error_msg "Failed to secure MySQL" || exit 1
+
 if [[ "${DB_PORT}" != "3306" ]]; then
-    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mysql.conf.d/mysqld.cnf
-    systemctl restart mysql
+    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mysql.conf.d/mysqld.cnf \
+        || { error "Failed to write port configuration"; exit 1; }
+    systemctl restart mysql &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting MySQL" \
+        --success_msg "MySQL restarted" --error_msg "Failed to restart MySQL" || exit 1
 fi
+
 if [[ -n "${DB_NAME}" ]]; then
-    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;"
+    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;" &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${DB_NAME}' and user '${DB_USER}'" \
+        --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 fi
 CONTAINER_SCRIPT_EOD
 

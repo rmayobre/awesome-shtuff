@@ -60,9 +60,20 @@ info "Installing OpenCode in container '$CT_NAME'..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y curl ca-certificates
-curl -fsSL https://opencode.ai/install | bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y curl ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
+curl -fsSL https://opencode.ai/install | bash &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing OpenCode" \
+    --success_msg "OpenCode installed" --error_msg "OpenCode installation failed" || exit 1
+
 cat > /etc/systemd/system/opencode.service <<EOF
 [Unit]
 Description=OpenCode Web UI
@@ -77,8 +88,14 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload
-systemctl enable --now opencode
+
+systemctl daemon-reload &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Reloading systemd" \
+    --success_msg "systemd reloaded" --error_msg "Failed to reload systemd" || exit 1
+
+systemctl enable --now opencode &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting OpenCode service" \
+    --success_msg "OpenCode service started" --error_msg "Failed to start OpenCode service" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/opencode-setup.sh \

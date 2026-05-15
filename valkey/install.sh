@@ -43,33 +43,64 @@ info "Installing and configuring Valkey..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-apt-get update -qq
-apt-get install -y curl gpg
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+apt-get install -y curl gpg &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
 curl -fsSL https://packages.valkey.io/valkey-signing.gpg \
-    | gpg --dearmor -o /usr/share/keyrings/valkey-archive-keyring.gpg
+    | gpg --dearmor -o /usr/share/keyrings/valkey-archive-keyring.gpg \
+    || { error "Failed to add Valkey signing key"; exit 1; }
+
 echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://packages.valkey.io/apt stable main' \
-    | tee /etc/apt/sources.list.d/valkey.list
-apt-get update -qq
-apt-get install -y valkey
-sed -i 's/^port .*/port ${VALKEY_PORT}/' /etc/valkey/valkey.conf
-sed -i 's/^bind .*/bind 0.0.0.0/' /etc/valkey/valkey.conf
+    | tee /etc/apt/sources.list.d/valkey.list \
+    || { error "Failed to add Valkey repository"; exit 1; }
+
+apt-get update -qq &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+apt-get install -y valkey &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
+    --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
+
+sed -i 's/^port .*/port ${VALKEY_PORT}/' /etc/valkey/valkey.conf \
+    || { error "Failed to configure Valkey port"; exit 1; }
+sed -i 's/^bind .*/bind 0.0.0.0/' /etc/valkey/valkey.conf \
+    || { error "Failed to configure Valkey bind address"; exit 1; }
+
 if [[ -n "${VALKEY_PASSWORD}" ]]; then
-    sed -i 's/^# requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf
-    sed -i 's/^requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf
+    sed -i 's/^# requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf \
+        || { error "Failed to configure Valkey password"; exit 1; }
+    sed -i 's/^requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf \
+        || { error "Failed to configure Valkey password"; exit 1; }
 fi
+
 case "${VALKEY_PERSISTENCE}" in
     rdb)
-        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf
+        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
     aof)
-        sed -i 's/^appendonly .*/appendonly yes/' /etc/valkey/valkey.conf
+        sed -i 's/^appendonly .*/appendonly yes/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
     none)
-        sed -i 's/^save /#save /' /etc/valkey/valkey.conf
-        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf
+        sed -i 's/^save /#save /' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
+        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
 esac
-systemctl enable --now valkey
+
+systemctl enable --now valkey &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Valkey service" \
+    --success_msg "Valkey service started" --error_msg "Failed to start Valkey service" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/valkey-setup.sh \
