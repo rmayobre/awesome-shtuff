@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -67,13 +68,20 @@ container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Updating packages in container" \
-    --success_msg "Packages updated" \
-    --error_msg "Package update failed" || exit 1
+CONTAINER_SCRIPT
+#!/bin/bash
+apt-get update -qq
+apt-get install -y curl ca-certificates
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- apt-get install -y curl ca-certificates &
+container shell-script --name "$CT_NAME" --path /opt/ollama-deps.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying dependency script" \
+    --success_msg "Dependency script deployed" \
+    --error_msg "Dependency script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/ollama-deps.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing dependencies" \
     --success_msg "Dependencies installed" \
@@ -83,7 +91,19 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 info "Installing Ollama in container '$CT_NAME'..."
 
-container exec --name "$CT_NAME" -- bash -c "curl -fsSL https://ollama.com/install.sh | sh" &
+CONTAINER_SCRIPT
+#!/bin/bash
+curl -fsSL https://ollama.com/install.sh | sh
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/ollama-install.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying Ollama installer" \
+    --success_msg "Installer deployed" \
+    --error_msg "Installer deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/ollama-install.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing Ollama" \
     --success_msg "Ollama installed" \
@@ -91,26 +111,26 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Service Configuration ────────────────────────────────────────────────────
 
-# Configure listen address/port if non-default
-if [[ "$OLLAMA_PORT" != "11434" ]]; then
-    container exec --name "$CT_NAME" -- bash -c \
-        "mkdir -p /etc/systemd/system/ollama.service.d && \
-         printf '[Service]\nEnvironment=\"OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}\"\n' \
-         > /etc/systemd/system/ollama.service.d/override.conf" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" \
-        --message "Configuring Ollama port" \
-        --success_msg "Port configured" \
-        --error_msg "Port configuration failed" || exit 1
-else
-    container exec --name "$CT_NAME" -- bash -c \
-        "mkdir -p /etc/systemd/system/ollama.service.d && \
-         printf '[Service]\nEnvironment=\"OLLAMA_HOST=0.0.0.0:11434\"\n' \
-         > /etc/systemd/system/ollama.service.d/override.conf" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" \
-        --message "Configuring Ollama to listen on all interfaces" \
-        --success_msg "Ollama listener configured" \
-        --error_msg "Listener configuration failed" || exit 1
-fi
+# Configure listen address/port
+CONTAINER_SCRIPT
+#!/bin/bash
+mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}"\n' \
+    > /etc/systemd/system/ollama.service.d/override.conf
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/ollama-service.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Deploying service configuration script" \
+    --success_msg "Service configuration script deployed" \
+    --error_msg "Service configuration script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/ollama-service.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" \
+    --message "Configuring Ollama listen address" \
+    --success_msg "Ollama listener configured" \
+    --error_msg "Listener configuration failed" || exit 1
 
 container exec --name "$CT_NAME" -- systemctl daemon-reload &
 monitor $! --style "$SPINNER_LOADING_STYLE" \

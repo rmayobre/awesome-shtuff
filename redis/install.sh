@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -38,11 +39,18 @@ container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+CONTAINER_SCRIPT
+#!/bin/bash
+apt-get update -qq
+apt-get install -y redis-server
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- apt-get install -y redis-server &
+container shell-script --name "$CT_NAME" --path /opt/redis-deps.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Redis dependency script" \
+    --success_msg "Dependency script deployed" --error_msg "Dependency script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/redis-deps.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
     --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
 
@@ -50,33 +58,34 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
 
 info "Configuring Redis..."
 
-# Build the sed commands to configure redis.conf
-REDIS_CONF_CMDS="sed -i 's/^port .*/port $REDIS_PORT/' /etc/redis/redis.conf"
-
-# Bind to all interfaces so the container is reachable
-REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf"
-
-# Configure authentication
-if [[ -n "$REDIS_PASSWORD" ]]; then
-    REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^# requirepass .*/requirepass $REDIS_PASSWORD/' /etc/redis/redis.conf"
-    REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^requirepass .*/requirepass $REDIS_PASSWORD/' /etc/redis/redis.conf"
+CONTAINER_SCRIPT
+#!/bin/bash
+sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf
+sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf
+if [[ -n "${REDIS_PASSWORD}" ]]; then
+    sed -i 's/^# requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf
+    sed -i 's/^requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf
 fi
-
-# Configure persistence
-case "$REDIS_PERSISTENCE" in
+case "${REDIS_PERSISTENCE}" in
     rdb)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf"
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf
         ;;
     aof)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf"
+        sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf
         ;;
     none)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^save /#save /' /etc/redis/redis.conf"
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf"
+        sed -i 's/^save /#save /' /etc/redis/redis.conf
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf
         ;;
 esac
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- bash -c "$REDIS_CONF_CMDS" &
+container shell-script --name "$CT_NAME" --path /opt/redis-config.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Redis configuration script" \
+    --success_msg "Configuration script deployed" --error_msg "Configuration script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/redis-config.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Applying Redis configuration" \
     --success_msg "Redis configured" --error_msg "Redis configuration failed" || exit 1
 
