@@ -83,11 +83,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y curl ca-certificates &
+install curl ca-certificates &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -95,19 +95,15 @@ curl -fsSL https://ollama.com/install.sh | sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Ollama" \
     --success_msg "Ollama installed" --error_msg "Ollama installation failed" || exit 1
 
-mkdir -p /etc/systemd/system/ollama.service.d \
-    || { error "Failed to create systemd override directory"; exit 1; }
-printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}"\n' \
-    > /etc/systemd/system/ollama.service.d/override.conf \
-    || { error "Failed to write Ollama service override"; exit 1; }
-
-systemctl daemon-reload &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Reloading systemd" \
-    --success_msg "systemd reloaded" --error_msg "Failed to reload systemd" || exit 1
-
-systemctl enable --now ollama &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Ollama service" \
-    --success_msg "Ollama service started" --error_msg "Failed to start Ollama service" || exit 1
+service \
+    --name "ollama" \
+    --description "Ollama Large Language Model Server" \
+    --exec-start "/usr/local/bin/ollama serve" \
+    --user "ollama" \
+    --environment "OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring Ollama service" \
+    --success_msg "Ollama service configured and started" \
+    --error_msg "Failed to configure Ollama service" || exit 1
 
 if [[ -n "${OLLAMA_MODEL}" ]]; then
     ollama pull "${OLLAMA_MODEL}" &

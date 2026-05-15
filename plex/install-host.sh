@@ -14,11 +14,11 @@ confirm "Plex will be installed directly on this host. Continue?" \
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y curl wget gnupg2 ca-certificates &
+install curl wget gnupg2 ca-certificates &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -36,7 +36,7 @@ echo "deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downl
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding Plex repository" \
     --success_msg "Plex repository added" --error_msg "Failed to add Plex repository" || exit 1
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Refreshing package lists" \
     --success_msg "Package lists refreshed" --error_msg "Package list refresh failed" || exit 1
 
@@ -44,7 +44,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Refreshing package lists"
 
 info "Installing Plex Media Server..."
 
-apt-get install -y plexmediaserver &
+install plexmediaserver &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
     --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
 

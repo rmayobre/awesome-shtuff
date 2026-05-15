@@ -45,11 +45,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y redis-server &
+install redis-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
     --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
 

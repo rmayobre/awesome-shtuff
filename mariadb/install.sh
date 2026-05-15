@@ -56,11 +56,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y mariadb-server &
+install mariadb-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
     --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
 

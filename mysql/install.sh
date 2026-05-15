@@ -56,7 +56,7 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
@@ -65,7 +65,7 @@ echo "mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}" | de
 echo "mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
     || { error "Failed to pre-configure MySQL root password confirmation"; exit 1; }
 
-apt-get install -y mysql-server &
+install mysql-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
     --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 

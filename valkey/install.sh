@@ -45,11 +45,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y curl gpg &
+install curl gpg &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -61,11 +61,11 @@ echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://pac
     | tee /etc/apt/sources.list.d/valkey.list \
     || { error "Failed to add Valkey repository"; exit 1; }
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-apt-get install -y valkey &
+install valkey &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
     --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
 

@@ -46,11 +46,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y postgresql postgresql-contrib &
+install postgresql postgresql-contrib &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
     --success_msg "PostgreSQL installed" --error_msg "PostgreSQL installation failed" || exit 1
 

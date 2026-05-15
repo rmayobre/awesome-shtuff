@@ -47,11 +47,11 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-apt-get install -y curl wget gnupg2 ca-certificates &
+install curl wget gnupg2 ca-certificates &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
@@ -63,11 +63,11 @@ echo 'deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downl
     > /etc/apt/sources.list.d/plexmediaserver.list \
     || { error "Failed to add Plex repository"; exit 1; }
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-apt-get install -y plexmediaserver &
+install plexmediaserver &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
     --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
 
