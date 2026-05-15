@@ -74,7 +74,7 @@ curl -fsSL https://opencode.ai/install | bash &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing OpenCode" \
     --success_msg "OpenCode installed" --error_msg "OpenCode installation failed" || exit 1
 
-cat > /etc/systemd/system/opencode.service <<EOF
+cat > /etc/systemd/system/opencode.service <<EOF || { error "Failed to write OpenCode service file"; exit 1; }
 [Unit]
 Description=OpenCode Web UI
 After=network.target

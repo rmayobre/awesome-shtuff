@@ -58,10 +58,9 @@ systemctl enable --now postgresql &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting PostgreSQL service" \
     --success_msg "PostgreSQL service started" --error_msg "Failed to start PostgreSQL service" || exit 1
 
-su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';\"" postgres \
-    || { error "Failed to create database user"; exit 1; }
-su -c "psql -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres \
-    || { error "Failed to create database"; exit 1; }
+su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}'; CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${PG_DB}' and user '${PG_USER}'" \
+    --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 
 if [[ "${PG_PORT}" != "5432" ]]; then
     sed -i "s/^#port = 5432/port = ${PG_PORT}/" /etc/postgresql/*/main/postgresql.conf \
