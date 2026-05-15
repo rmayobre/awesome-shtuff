@@ -75,93 +75,37 @@ container create "${CONTAINER_ARGS[@]}" || exit 1
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
-
-CONTAINER_SCRIPT
-#!/bin/bash
-apt-get update -qq
-apt-get install -y curl ca-certificates
-CONTAINER_SCRIPT_EOD
-
-container shell-script --name "$CT_NAME" --path /opt/ollama-deps.sh \
-    --style "$SPINNER_LOADING_STYLE" &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Deploying dependency script" \
-    --success_msg "Dependency script deployed" \
-    --error_msg "Dependency script deployment failed" || exit 1
-
-container exec --name "$CT_NAME" -- /opt/ollama-deps.sh &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Installing dependencies" \
-    --success_msg "Dependencies installed" \
-    --error_msg "Dependency installation failed" || exit 1
-
-# ─── Ollama Installation ──────────────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
 info "Installing Ollama in container '$CT_NAME'..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
+apt-get update -qq
+apt-get install -y curl ca-certificates
 curl -fsSL https://ollama.com/install.sh | sh
-CONTAINER_SCRIPT_EOD
-
-container shell-script --name "$CT_NAME" --path /opt/ollama-install.sh \
-    --style "$SPINNER_LOADING_STYLE" &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Deploying Ollama installer" \
-    --success_msg "Installer deployed" \
-    --error_msg "Installer deployment failed" || exit 1
-
-container exec --name "$CT_NAME" -- /opt/ollama-install.sh &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Installing Ollama" \
-    --success_msg "Ollama installed" \
-    --error_msg "Ollama installation failed" || exit 1
-
-# ─── Service Configuration ────────────────────────────────────────────────────
-
-# Configure listen address/port
-CONTAINER_SCRIPT
-#!/bin/bash
 mkdir -p /etc/systemd/system/ollama.service.d
 printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}"\n' \
     > /etc/systemd/system/ollama.service.d/override.conf
+systemctl daemon-reload
+systemctl enable --now ollama
+if [[ -n "${OLLAMA_MODEL}" ]]; then
+    ollama pull "${OLLAMA_MODEL}"
+fi
 CONTAINER_SCRIPT_EOD
 
-container shell-script --name "$CT_NAME" --path /opt/ollama-service.sh \
+container shell-script --name "$CT_NAME" --path /opt/ollama-setup.sh \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Deploying service configuration script" \
-    --success_msg "Service configuration script deployed" \
-    --error_msg "Service configuration script deployment failed" || exit 1
+    --message "Deploying Ollama setup script" \
+    --success_msg "Setup script deployed" \
+    --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- /opt/ollama-service.sh &
+container exec --name "$CT_NAME" -- /opt/ollama-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Configuring Ollama listen address" \
-    --success_msg "Ollama listener configured" \
-    --error_msg "Listener configuration failed" || exit 1
-
-container exec --name "$CT_NAME" -- systemctl daemon-reload &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Reloading systemd" \
-    --success_msg "Systemd reloaded" \
-    --error_msg "Systemd reload failed" || exit 1
-
-container exec --name "$CT_NAME" -- systemctl enable --now ollama &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Enabling Ollama service" \
-    --success_msg "Ollama service enabled and started" \
-    --error_msg "Failed to enable Ollama service" || exit 1
-
-# ─── Optional Model Pull ──────────────────────────────────────────────────────
-
-if [[ -n "$OLLAMA_MODEL" ]]; then
-    container exec --name "$CT_NAME" -- ollama pull "$OLLAMA_MODEL" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" \
-        --message "Pulling model '$OLLAMA_MODEL'" \
-        --success_msg "Model '$OLLAMA_MODEL' pulled" \
-        --error_msg "Failed to pull model '$OLLAMA_MODEL'" || exit 1
-fi
+    --message "Installing Ollama" \
+    --success_msg "Ollama ready" \
+    --error_msg "Ollama setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
