@@ -14,6 +14,14 @@ Scripts that create containers require a supported container runtime (Proxmox LX
 
 ## Container Tools
 
+### LXC Host Setup
+
+Prepares a Linux server to run LXC containers. Configures the network bridge (`lxcbr0`), IP forwarding, NAT, AppArmor profiles, and UID/GID mapping — the settings most likely to block container deployment on a fresh host.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/lxc/setup.sh)
+```
+
 ### Create Container
 
 Interactively create and provision a bare distro container with base utilities.
