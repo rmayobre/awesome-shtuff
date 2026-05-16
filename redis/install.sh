@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -36,55 +37,64 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+info "Installing and configuring Redis..."
+
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y redis-server &
+install redis-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
     --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
 
-# ─── Redis Configuration ──────────────────────────────────────────────────────
+sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf \
+    || { error "Failed to configure Redis port"; exit 1; }
+sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf \
+    || { error "Failed to configure Redis bind address"; exit 1; }
 
-info "Configuring Redis..."
-
-# Build the sed commands to configure redis.conf
-REDIS_CONF_CMDS="sed -i 's/^port .*/port $REDIS_PORT/' /etc/redis/redis.conf"
-
-# Bind to all interfaces so the container is reachable
-REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf"
-
-# Configure authentication
-if [[ -n "$REDIS_PASSWORD" ]]; then
-    REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^# requirepass .*/requirepass $REDIS_PASSWORD/' /etc/redis/redis.conf"
-    REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^requirepass .*/requirepass $REDIS_PASSWORD/' /etc/redis/redis.conf"
+if [[ -n "${REDIS_PASSWORD}" ]]; then
+    sed -i 's/^# requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf \
+        || { error "Failed to configure Redis password"; exit 1; }
+    sed -i 's/^requirepass .*/requirepass ${REDIS_PASSWORD}/' /etc/redis/redis.conf \
+        || { error "Failed to configure Redis password"; exit 1; }
 fi
 
-# Configure persistence
-case "$REDIS_PERSISTENCE" in
+case "${REDIS_PERSISTENCE}" in
     rdb)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf"
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
     aof)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf"
+        sed -i 's/^appendonly .*/appendonly yes/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
     none)
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^save /#save /' /etc/redis/redis.conf"
-        REDIS_CONF_CMDS="$REDIS_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf"
+        sed -i 's/^save /#save /' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
+        sed -i 's/^appendonly .*/appendonly no/' /etc/redis/redis.conf \
+            || { error "Failed to configure Redis persistence"; exit 1; }
         ;;
 esac
 
-container exec --name "$CT_NAME" -- bash -c "$REDIS_CONF_CMDS" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Applying Redis configuration" \
-    --success_msg "Redis configured" --error_msg "Redis configuration failed" || exit 1
+systemctl enable --now redis-server &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Redis service" \
+    --success_msg "Redis service started" --error_msg "Failed to start Redis service" || exit 1
+CONTAINER_SCRIPT_EOD
 
-# ─── Service Setup ────────────────────────────────────────────────────────────
+container shell-script --name "$CT_NAME" --path /opt/redis-setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Redis setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- systemctl enable --now redis-server &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Enabling Redis service" \
-    --success_msg "Redis service enabled" --error_msg "Failed to enable Redis service" || exit 1
+container exec --name "$CT_NAME" -- /opt/redis-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring Redis" \
+    --success_msg "Redis ready" --error_msg "Redis setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 

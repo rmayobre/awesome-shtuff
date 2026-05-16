@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -36,62 +37,60 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
-
-container exec --name "$CT_NAME" -- apt-get install -y curl wget gnupg2 ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
-
-# ─── Plex Repository Setup ────────────────────────────────────────────────────
-
-info "Configuring Plex repository inside container..."
-
-container exec --name "$CT_NAME" -- bash -c \
-    "curl -fsSL https://downloads.plex.tv/plex-keys/PlexSign.key \
-     | gpg --dearmor -o /usr/share/keyrings/plex-archive-keyring.gpg" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding Plex GPG key" \
-    --success_msg "Plex GPG key added" --error_msg "Failed to add Plex GPG key" || exit 1
-
-container exec --name "$CT_NAME" -- bash -c \
-    "echo 'deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downloads.plex.tv/repo/deb public main' \
-     > /etc/apt/sources.list.d/plexmediaserver.list" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding Plex repository" \
-    --success_msg "Plex repository added" --error_msg "Failed to add Plex repository" || exit 1
-
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Refreshing package lists" \
-    --success_msg "Package lists refreshed" --error_msg "Package list refresh failed" || exit 1
-
-# ─── Plex Installation ────────────────────────────────────────────────────────
+[[ -z "$MEDIA_PATH" ]] && warn "No media path configured. Mount your library manually at /media inside the container."
 
 info "Installing Plex Media Server..."
 
-container exec --name "$CT_NAME" -- apt-get install -y plexmediaserver &
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+install curl wget gnupg2 ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
+curl -fsSL https://downloads.plex.tv/plex-keys/PlexSign.key \
+    | gpg --dearmor -o /usr/share/keyrings/plex-archive-keyring.gpg \
+    || { error "Failed to add Plex signing key"; exit 1; }
+
+echo 'deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downloads.plex.tv/repo/deb public main' \
+    > /etc/apt/sources.list.d/plexmediaserver.list \
+    || { error "Failed to add Plex repository"; exit 1; }
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+install plexmediaserver &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
     --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
 
-# ─── Media Library Bind Mount (optional) ──────────────────────────────────────
-
-if [[ -n "$MEDIA_PATH" ]]; then
-    info "Configuring media library bind mount: $MEDIA_PATH -> /media"
-    container exec --name "$CT_NAME" -- mkdir -p /media
-    container exec --name "$CT_NAME" -- bash -c \
-        "echo '$MEDIA_PATH /media none bind,ro 0 0' >> /etc/fstab" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring media bind mount" \
-        --success_msg "Media bind mount configured" --error_msg "Failed to configure bind mount"
-else
-    warn "No media path configured. Mount your library manually at /media inside the container."
+if [[ -n "${MEDIA_PATH}" ]]; then
+    mkdir -p /media \
+        || { error "Failed to create /media directory"; exit 1; }
+    echo '${MEDIA_PATH} /media none bind,ro 0 0' >> /etc/fstab \
+        || { error "Failed to configure media bind mount"; exit 1; }
 fi
 
-# ─── Service Setup ────────────────────────────────────────────────────────────
+systemctl enable --now plexmediaserver &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Plex Media Server" \
+    --success_msg "Plex Media Server started" --error_msg "Failed to start Plex Media Server" || exit 1
+CONTAINER_SCRIPT_EOD
 
-container exec --name "$CT_NAME" -- systemctl enable --now plexmediaserver &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Enabling Plex Media Server service" \
-    --success_msg "Plex service enabled and started" --error_msg "Failed to enable Plex service" || exit 1
+container shell-script --name "$CT_NAME" --path /opt/plex-setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Plex setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/plex-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
+    --success_msg "Plex Media Server ready" --error_msg "Plex installation failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 

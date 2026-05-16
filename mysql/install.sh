@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -47,55 +48,58 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+info "Installing and configuring MySQL..."
+
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-# Pre-seed debconf to avoid interactive prompts during mysql-server install
-container exec --name "$CT_NAME" -- \
-    bash -c "echo \"mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}\" | debconf-set-selections && echo \"mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}\" | debconf-set-selections" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Pre-configuring MySQL root password" \
-    --success_msg "Pre-configuration complete" --error_msg "Pre-configuration failed" || exit 1
+echo "mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
+    || { error "Failed to pre-configure MySQL root password"; exit 1; }
+echo "mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
+    || { error "Failed to pre-configure MySQL root password confirmation"; exit 1; }
 
-container exec --name "$CT_NAME" -- apt-get install -y mysql-server &
+install mysql-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
     --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
-# ─── MySQL Configuration ──────────────────────────────────────────────────────
-
-info "Configuring MySQL..."
-
-container exec --name "$CT_NAME" -- systemctl enable --now mysql &
+systemctl enable --now mysql &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
     --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
 
-# Secure the installation: remove anonymous users, test db, remote root login
-container exec --name "$CT_NAME" -- \
-    bash -c "mysql -u root -p'${DB_ROOT_PASSWORD}' -e \"DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'; FLUSH PRIVILEGES;\"" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL installation" \
+mysql -u root -p'${DB_ROOT_PASSWORD}' -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL" \
     --success_msg "MySQL secured" --error_msg "Failed to secure MySQL" || exit 1
 
-# Configure port if non-default
-if [[ "$DB_PORT" != "3306" ]]; then
-    container exec --name "$CT_NAME" -- \
-        bash -c "echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mysql.conf.d/mysqld.cnf" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL port" \
-        --success_msg "Port configured" --error_msg "Failed to configure port" || exit 1
-
-    container exec --name "$CT_NAME" -- systemctl restart mysql &
+if [[ "${DB_PORT}" != "3306" ]]; then
+    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mysql.conf.d/mysqld.cnf \
+        || { error "Failed to write port configuration"; exit 1; }
+    systemctl restart mysql &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting MySQL" \
         --success_msg "MySQL restarted" --error_msg "Failed to restart MySQL" || exit 1
 fi
 
-# Create optional database and user
-if [[ -n "$DB_NAME" ]]; then
-    container exec --name "$CT_NAME" -- \
-        bash -c "mysql -u root -p'${DB_ROOT_PASSWORD}' -e \"CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;\"" &
+if [[ -n "${DB_NAME}" ]]; then
+    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;" &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${DB_NAME}' and user '${DB_USER}'" \
         --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 fi
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/mysql-setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying MySQL setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/mysql-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring MySQL" \
+    --success_msg "MySQL ready" --error_msg "MySQL setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 

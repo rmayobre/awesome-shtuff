@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -37,48 +38,47 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+info "Installing and configuring PostgreSQL..."
+
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y postgresql postgresql-contrib &
+install postgresql postgresql-contrib &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
     --success_msg "PostgreSQL installed" --error_msg "PostgreSQL installation failed" || exit 1
 
-# ─── PostgreSQL Configuration ─────────────────────────────────────────────────
-
-info "Configuring PostgreSQL..."
-
-# Enable and start the service
-container exec --name "$CT_NAME" -- systemctl enable --now postgresql &
+systemctl enable --now postgresql &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting PostgreSQL service" \
     --success_msg "PostgreSQL service started" --error_msg "Failed to start PostgreSQL service" || exit 1
 
-# Create database user
-container exec --name "$CT_NAME" -- \
-    su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}';\"" postgres &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database user '${PG_USER}'" \
-    --success_msg "Database user created" --error_msg "Failed to create database user" || exit 1
+su -c "psql -c \"CREATE USER ${PG_USER} WITH PASSWORD '${PG_PASSWORD}'; CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${PG_DB}' and user '${PG_USER}'" \
+    --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 
-# Create database
-container exec --name "$CT_NAME" -- \
-    su -c "psql -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\"" postgres &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${PG_DB}'" \
-    --success_msg "Database created" --error_msg "Failed to create database" || exit 1
-
-# Update PostgreSQL to listen on the configured port (if non-default)
-if [[ "$PG_PORT" != "5432" ]]; then
-    container exec --name "$CT_NAME" -- \
-        bash -c "sed -i \"s/^#port = 5432/port = ${PG_PORT}/\" /etc/postgresql/*/main/postgresql.conf" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring PostgreSQL port" \
-        --success_msg "Port configured" --error_msg "Failed to configure port" || exit 1
-
-    container exec --name "$CT_NAME" -- systemctl restart postgresql &
+if [[ "${PG_PORT}" != "5432" ]]; then
+    sed -i "s/^#port = 5432/port = ${PG_PORT}/" /etc/postgresql/*/main/postgresql.conf \
+        || { error "Failed to write port configuration"; exit 1; }
+    systemctl restart postgresql &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting PostgreSQL" \
         --success_msg "PostgreSQL restarted" --error_msg "Failed to restart PostgreSQL" || exit 1
 fi
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/postgres-setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying PostgreSQL setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/postgres-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring PostgreSQL" \
+    --success_msg "PostgreSQL ready" --error_msg "PostgreSQL setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 

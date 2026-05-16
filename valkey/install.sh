@@ -1,5 +1,6 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -36,78 +37,80 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+info "Installing and configuring Valkey..."
+
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-container exec --name "$CT_NAME" -- apt-get install -y curl gpg &
+install curl gpg &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
-# ─── Add Valkey Repository ────────────────────────────────────────────────────
+curl -fsSL https://packages.valkey.io/valkey-signing.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/valkey-archive-keyring.gpg \
+    || { error "Failed to add Valkey signing key"; exit 1; }
 
-info "Adding Valkey package repository..."
+echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://packages.valkey.io/apt stable main' \
+    | tee /etc/apt/sources.list.d/valkey.list \
+    || { error "Failed to add Valkey repository"; exit 1; }
 
-VALKEY_REPO_SETUP="curl -fsSL https://packages.valkey.io/valkey-signing.gpg \
-    | gpg --dearmor -o /usr/share/keyrings/valkey-archive-keyring.gpg && \
-    echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://packages.valkey.io/apt stable main' \
-    | tee /etc/apt/sources.list.d/valkey.list"
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-container exec --name "$CT_NAME" -- bash -c "$VALKEY_REPO_SETUP" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding Valkey repository" \
-    --success_msg "Valkey repository added" --error_msg "Failed to add Valkey repository" || exit 1
-
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Refreshing package lists" \
-    --success_msg "Package lists refreshed" --error_msg "Package list refresh failed" || exit 1
-
-# ─── Installation ─────────────────────────────────────────────────────────────
-
-container exec --name "$CT_NAME" -- apt-get install -y valkey &
+install valkey &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
     --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
 
-# ─── Valkey Configuration ─────────────────────────────────────────────────────
+sed -i 's/^port .*/port ${VALKEY_PORT}/' /etc/valkey/valkey.conf \
+    || { error "Failed to configure Valkey port"; exit 1; }
+sed -i 's/^bind .*/bind 0.0.0.0/' /etc/valkey/valkey.conf \
+    || { error "Failed to configure Valkey bind address"; exit 1; }
 
-info "Configuring Valkey..."
-
-# Build the sed commands to configure valkey.conf
-VALKEY_CONF_CMDS="sed -i 's/^port .*/port $VALKEY_PORT/' /etc/valkey/valkey.conf"
-
-# Bind to all interfaces so the container is reachable
-VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^bind .*/bind 0.0.0.0/' /etc/valkey/valkey.conf"
-
-# Configure authentication
-if [[ -n "$VALKEY_PASSWORD" ]]; then
-    VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^# requirepass .*/requirepass $VALKEY_PASSWORD/' /etc/valkey/valkey.conf"
-    VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^requirepass .*/requirepass $VALKEY_PASSWORD/' /etc/valkey/valkey.conf"
+if [[ -n "${VALKEY_PASSWORD}" ]]; then
+    sed -i 's/^# requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf \
+        || { error "Failed to configure Valkey password"; exit 1; }
+    sed -i 's/^requirepass .*/requirepass ${VALKEY_PASSWORD}/' /etc/valkey/valkey.conf \
+        || { error "Failed to configure Valkey password"; exit 1; }
 fi
 
-# Configure persistence
-case "$VALKEY_PERSISTENCE" in
+case "${VALKEY_PERSISTENCE}" in
     rdb)
-        VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf"
+        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
     aof)
-        VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^appendonly .*/appendonly yes/' /etc/valkey/valkey.conf"
+        sed -i 's/^appendonly .*/appendonly yes/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
     none)
-        VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^save /#save /' /etc/valkey/valkey.conf"
-        VALKEY_CONF_CMDS="$VALKEY_CONF_CMDS && sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf"
+        sed -i 's/^save /#save /' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
+        sed -i 's/^appendonly .*/appendonly no/' /etc/valkey/valkey.conf \
+            || { error "Failed to configure Valkey persistence"; exit 1; }
         ;;
 esac
 
-container exec --name "$CT_NAME" -- bash -c "$VALKEY_CONF_CMDS" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Applying Valkey configuration" \
-    --success_msg "Valkey configured" --error_msg "Valkey configuration failed" || exit 1
+systemctl enable --now valkey &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Valkey service" \
+    --success_msg "Valkey service started" --error_msg "Failed to start Valkey service" || exit 1
+CONTAINER_SCRIPT_EOD
 
-# ─── Service Setup ────────────────────────────────────────────────────────────
+container shell-script --name "$CT_NAME" --path /opt/valkey-setup.sh \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Valkey setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- systemctl enable --now valkey &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Enabling Valkey service" \
-    --success_msg "Valkey service enabled" --error_msg "Failed to enable Valkey service" || exit 1
+container exec --name "$CT_NAME" -- /opt/valkey-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring Valkey" \
+    --success_msg "Valkey ready" --error_msg "Valkey setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 

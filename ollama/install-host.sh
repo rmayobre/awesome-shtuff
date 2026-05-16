@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.2.0/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -14,13 +14,13 @@ question "Pull a model after install? (e.g. llama3, mistral — leave blank to s
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 
-apt-get update -qq &
+update &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Updating packages" \
     --success_msg "Packages updated" \
     --error_msg "Package update failed" || exit 1
 
-apt-get install -y curl ca-certificates &
+install curl ca-certificates &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing dependencies" \
     --success_msg "Dependencies installed" \
@@ -38,23 +38,16 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Service Configuration ────────────────────────────────────────────────────
 
-mkdir -p /etc/systemd/system/ollama.service.d
-cat > /etc/systemd/system/ollama.service.d/override.conf <<EOF
-[Service]
-Environment="OLLAMA_HOST=${OLLAMA_HOST_ADDR}:${OLLAMA_PORT}"
-EOF
-
-systemctl daemon-reload &
+service \
+    --name "ollama" \
+    --description "Ollama Large Language Model Server" \
+    --exec-start "/usr/local/bin/ollama serve" \
+    --user "ollama" \
+    --environment "OLLAMA_HOST=${OLLAMA_HOST_ADDR}:${OLLAMA_PORT}" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Reloading systemd" \
-    --success_msg "Systemd reloaded" \
-    --error_msg "Systemd reload failed" || exit 1
-
-systemctl enable --now ollama &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Enabling Ollama service" \
-    --success_msg "Ollama service enabled and started" \
-    --error_msg "Failed to enable Ollama service" || exit 1
+    --message "Configuring Ollama service" \
+    --success_msg "Ollama service configured and started" \
+    --error_msg "Failed to configure Ollama service" || exit 1
 
 # ─── Optional Model Pull ──────────────────────────────────────────────────────
 
