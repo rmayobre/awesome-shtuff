@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 

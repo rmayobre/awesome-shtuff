@@ -6,12 +6,12 @@
 
 ## Script Framework
 
-All install scripts **must** use [rmayobre/shtuff](https://github.com/rmayobre/shtuff) as the scripting framework. Always use the **latest release** (currently `v1.3.0-beta`).
+All install scripts **must** use [rmayobre/shtuff](https://github.com/rmayobre/shtuff) as the scripting framework. Always use the **latest release** (currently `v1.3.2-beta`).
 
 Source shtuff at the top of every script:
 
 ```bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 ```
 
 When a new shtuff release is published, update the version tag across all scripts and this file.
@@ -43,7 +43,7 @@ Every script must begin with:
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 ```
 
 ### 2. User Input for Configuration
@@ -132,7 +132,7 @@ This removes orphaned packages and clears the package manager cache on the host 
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -197,5 +197,5 @@ info "<project-name> installed successfully in container '$CT_NAME'!"
 ## Updating shtuff Version
 
 When a new shtuff release is published:
-1. Update the version tag in the `source` line of every script (`v1.3.0-beta` → new version)
+1. Update the version tag in the `source` line of every script (`v1.3.2-beta` → new version)
 2. Update the version reference in this CLAUDE.md

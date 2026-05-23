@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 shopt -s expand_aliases
 
 #IS_DRY_RUN=true
@@ -20,7 +20,7 @@ container start --name "$CONTAINER_NAME" --style "$SPINNER_LOADING_STYLE" || exi
 
 CONTAINER_SCRIPT
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.0-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
