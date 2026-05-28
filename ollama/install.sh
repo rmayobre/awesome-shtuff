@@ -35,6 +35,16 @@ question "Memory in MB [2048]"         && CT_MEMORY="${answer:-2048}"
 question "CPU cores [2]"               && CT_CORES="${answer:-2}"
 question "Disk size in GB [20]"        && CT_DISK="${answer:-20}"
 
+# Network configuration
+question "Network bridge [vmbr0]"      && CT_BRIDGE="${answer:-vmbr0}"
+question "IP address [dhcp]"           && CT_IP="${answer:-dhcp}"
+CT_GATEWAY=""
+CT_DNS=""
+if [[ "$CT_IP" != "dhcp" ]]; then
+    question "Gateway"                 && CT_GATEWAY="$answer"
+    question "DNS server [8.8.8.8]"    && CT_DNS="${answer:-8.8.8.8}"
+fi
+
 # Ollama configuration
 question "Ollama listen port [11434]"  && OLLAMA_PORT="${answer:-11434}"
 
@@ -61,8 +71,13 @@ CONTAINER_ARGS=(
     --disk-size "$CT_DISK"
     --dist "$CT_DIST"
     --release "$CT_RELEASE"
+    --bridge "$CT_BRIDGE"
+    --ip "$CT_IP"
     --style "$SPINNER_LOADING_STYLE"
 )
+
+[[ -n "$CT_GATEWAY" ]] && CONTAINER_ARGS+=(--gateway "$CT_GATEWAY")
+[[ -n "$CT_DNS" ]]     && CONTAINER_ARGS+=(--dns "$CT_DNS")
 
 if [[ -n "$CT_GPU" ]]; then
     CONTAINER_ARGS+=(--gpu "$CT_GPU")

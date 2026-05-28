@@ -13,6 +13,16 @@ question "Memory in MB [512]"            && CT_MEMORY="${answer:-512}"
 question "CPU cores [1]"                 && CT_CORES="${answer:-1}"
 question "Disk size in GB [8]"           && CT_DISK="${answer:-8}"
 
+# Network configuration
+question "Network bridge [vmbr0]"        && CT_BRIDGE="${answer:-vmbr0}"
+question "IP address [dhcp]"             && CT_IP="${answer:-dhcp}"
+CT_GATEWAY=""
+CT_DNS=""
+if [[ "$CT_IP" != "dhcp" ]]; then
+    question "Gateway"                   && CT_GATEWAY="$answer"
+    question "DNS server [8.8.8.8]"      && CT_DNS="${answer:-8.8.8.8}"
+fi
+
 # PostgreSQL configuration
 question "PostgreSQL port [5432]"        && PG_PORT="${answer:-5432}"
 question "Database name [app]"           && PG_DB="${answer:-app}"
@@ -28,12 +38,17 @@ fi
 
 info "Creating container for PostgreSQL..."
 
+NETWORK_ARGS=(--bridge "$CT_BRIDGE" --ip "$CT_IP")
+[[ -n "$CT_GATEWAY" ]] && NETWORK_ARGS+=(--gateway "$CT_GATEWAY")
+[[ -n "$CT_DNS" ]]     && NETWORK_ARGS+=(--dns "$CT_DNS")
+
 container create \
     --name "$CT_NAME" \
     --hostname "$CT_HOSTNAME" \
     --memory "$CT_MEMORY" \
     --cores "$CT_CORES" \
     --disk-size "$CT_DISK" \
+    "${NETWORK_ARGS[@]}" \
     --style "$SPINNER_LOADING_STYLE" || exit 1
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1

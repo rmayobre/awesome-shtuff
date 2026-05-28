@@ -13,6 +13,16 @@ question "Memory in MB [2048]"       && CT_MEMORY="${answer:-2048}"
 question "CPU cores [2]"             && CT_CORES="${answer:-2}"
 question "Disk size in GB [20]"      && CT_DISK="${answer:-20}"
 
+# Network configuration
+question "Network bridge [vmbr0]"    && CT_BRIDGE="${answer:-vmbr0}"
+question "IP address [dhcp]"         && CT_IP="${answer:-dhcp}"
+CT_GATEWAY=""
+CT_DNS=""
+if [[ "$CT_IP" != "dhcp" ]]; then
+    question "Gateway"               && CT_GATEWAY="$answer"
+    question "DNS server [8.8.8.8]"  && CT_DNS="${answer:-8.8.8.8}"
+fi
+
 # Plex-specific configuration
 question "Plex port [32400]"         && PLEX_PORT="${answer:-32400}"
 question "Media library path on host (leave blank to skip bind mount)" \
@@ -27,12 +37,17 @@ fi
 
 info "Creating container for Plex Media Server..."
 
+NETWORK_ARGS=(--bridge "$CT_BRIDGE" --ip "$CT_IP")
+[[ -n "$CT_GATEWAY" ]] && NETWORK_ARGS+=(--gateway "$CT_GATEWAY")
+[[ -n "$CT_DNS" ]]     && NETWORK_ARGS+=(--dns "$CT_DNS")
+
 container create \
     --name "$CT_NAME" \
     --hostname "$CT_HOSTNAME" \
     --memory "$CT_MEMORY" \
     --cores "$CT_CORES" \
     --disk-size "$CT_DISK" \
+    "${NETWORK_ARGS[@]}" \
     --style "$SPINNER_LOADING_STYLE" || exit 1
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
