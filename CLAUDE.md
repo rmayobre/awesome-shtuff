@@ -6,15 +6,19 @@
 
 ## Script Framework
 
-All install scripts **must** use [rmayobre/shtuff](https://github.com/rmayobre/shtuff) as the scripting framework. Always use the **latest release** (currently `v1.3.2-beta`).
+All install scripts **must** use [rmayobre/shtuff](https://github.com/rmayobre/shtuff) as the scripting framework. Always source the `main` branch to track the latest changes.
 
-Source shtuff at the top of every script:
+Source shtuff at the top of every host script:
 
 ```bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 ```
 
-When a new shtuff release is published, update the version tag across all scripts and this file.
+Inside embedded `CONTAINER_SCRIPT` blocks, use `wget` instead (containers may not have `curl` pre-installed):
+
+```bash
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
+```
 
 ## Repository Structure
 
@@ -43,7 +47,7 @@ Every script must begin with:
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 ```
 
 ### 2. User Input for Configuration
@@ -86,6 +90,9 @@ container create \
 
 # Start the container
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
+
+# Configure container network
+container network prompt --name "$CT_NAME" || exit 1
 ```
 
 ### 4. Software Installation Inside the Container
@@ -132,7 +139,7 @@ This removes orphaned packages and clears the package manager cache on the host 
 
 ```bash
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 # ─── User Configuration ───────────────────────────────────────────────────────
 
@@ -164,6 +171,11 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Network Configuration ────────────────────────────────────────────────────
+
+info "Configuring network for container '$CT_NAME'..."
+container network prompt --name "$CT_NAME" || exit 1
+
 # ─── Dependencies Inside Container ────────────────────────────────────────────
 
 container exec --name "$CT_NAME" -- apt-get update -qq &
@@ -194,8 +206,6 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
 info "<project-name> installed successfully in container '$CT_NAME'!"
 ```
 
-## Updating shtuff Version
+## Updating shtuff
 
-When a new shtuff release is published:
-1. Update the version tag in the `source` line of every script (`v1.3.2-beta` → new version)
-2. Update the version reference in this CLAUDE.md
+Scripts source the `main` branch directly, so they always pick up the latest shtuff changes without any version bumps needed.
