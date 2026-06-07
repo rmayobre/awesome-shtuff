@@ -1,6 +1,5 @@
 #!/bin/bash
 source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
-shopt -s expand_aliases
 
 #IS_DRY_RUN=true
 LOG_LEVEL="$INFO_LEVEL"
