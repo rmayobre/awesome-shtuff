@@ -27,10 +27,10 @@ options "Database setup" \
 if [[ "$DB_MODE" == "local" ]]; then
     DB_HOST="127.0.0.1"
     question "Database port [3306]"             && DB_PORT="${answer:-3306}"
-    question "MariaDB root password"            && DB_ROOT_PASSWORD="$answer"
+    question "MySQL root password"              && DB_ROOT_PASSWORD="$answer"
 
     if [[ -z "$DB_ROOT_PASSWORD" ]]; then
-        error "MariaDB root password is required for a local database."
+        error "MySQL root password is required for a local database."
         exit 1
     fi
 
@@ -81,19 +81,19 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependen
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install mariadb-server &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
-        --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
+    install mysql-server &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
+        --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
-    systemctl enable --now mariadb &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MariaDB service" \
-        --success_msg "MariaDB service started" --error_msg "Failed to start MariaDB service" || exit 1
+    systemctl enable --now mysql &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
+        --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
 
-    mariadb -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}'; DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MariaDB" \
-        --success_msg "MariaDB secured" --error_msg "Failed to secure MariaDB" || exit 1
+    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}'; DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL" \
+        --success_msg "MySQL secured" --error_msg "Failed to secure MySQL" || exit 1
 
-    mariadb -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}'; CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}'; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'localhost' WITH GRANT OPTION; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION; FLUSH PRIVILEGES;" &
+    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}'; CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}'; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'localhost' WITH GRANT OPTION; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION; FLUSH PRIVILEGES;" &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring AzerothCore database user" \
         --success_msg "Database user configured" --error_msg "Failed to configure database user" || exit 1
 fi
