@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 shopt -s expand_aliases
 
 #IS_DRY_RUN=true
@@ -16,11 +16,16 @@ container prompt || exit 1
 
 container start --name "$CONTAINER_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Network Configuration ────────────────────────────────────────────────────
+
+info "Configuring network for container '$CONTAINER_NAME'..."
+container network prompt --name "$CONTAINER_NAME" || exit 1
+
 # ─── System Setup Inside Container ────────────────────────────────────────────
 
 CONTAINER_SCRIPT
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \

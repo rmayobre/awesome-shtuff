@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
@@ -37,6 +37,11 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Network Configuration ────────────────────────────────────────────────────
+
+info "Configuring network for container '$CT_NAME'..."
+container network prompt --name "$CT_NAME" || exit 1
+
 # ─── Setup Inside Container ───────────────────────────────────────────────────
 
 [[ -z "$MEDIA_PATH" ]] && warn "No media path configured. Mount your library manually at /media inside the container."
@@ -45,7 +50,7 @@ info "Installing Plex Media Server..."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
