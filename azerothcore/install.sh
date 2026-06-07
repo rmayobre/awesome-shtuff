@@ -1,5 +1,5 @@
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 shopt -s expand_aliases
 
 # ─── User Configuration ───────────────────────────────────────────────────────
@@ -63,6 +63,11 @@ container create \
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 
+# ─── Container Networking ─────────────────────────────────────────────────────
+
+info "Configuring container networking..."
+container network prompt --name "$CT_NAME"
+
 # ─── Setup Inside Container ───────────────────────────────────────────────────
 
 info "Building AzerothCore in container '$CT_NAME'..."
@@ -70,7 +75,7 @@ warn "The build step takes 30-60 minutes. Do not interrupt the process."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/v1.3.2-beta/shtuff-remote.sh)
+source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
