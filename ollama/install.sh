@@ -117,6 +117,9 @@ fi
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/ollama-setup.sh \
+    --env "OLLAMA_PORT=$OLLAMA_PORT" \
+    --env "OLLAMA_MODEL=$OLLAMA_MODEL" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Deploying Ollama setup script" \

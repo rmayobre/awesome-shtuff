@@ -92,6 +92,10 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Redis service" \
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/redis-setup.sh \
+    --env "REDIS_PORT=$REDIS_PORT" \
+    --env "REDIS_PASSWORD=$REDIS_PASSWORD" \
+    --env "REDIS_PERSISTENCE=$REDIS_PERSISTENCE" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Redis setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1

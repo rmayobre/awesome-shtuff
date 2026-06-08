@@ -90,6 +90,8 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring OpenCode serv
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/opencode-setup.sh \
+    --env "OC_PORT=$OC_PORT" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Deploying OpenCode setup script" \
