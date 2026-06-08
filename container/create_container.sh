@@ -36,6 +36,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CONTAINER_NAME" --path /opt/setup.sh \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Deploying setup script" \

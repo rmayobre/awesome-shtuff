@@ -108,6 +108,10 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Valkey service" 
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/valkey-setup.sh \
+    --env "VALKEY_PORT=$VALKEY_PORT" \
+    --env "VALKEY_PASSWORD=$VALKEY_PASSWORD" \
+    --env "VALKEY_PERSISTENCE=$VALKEY_PERSISTENCE" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Valkey setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1

@@ -76,6 +76,11 @@ fi
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/postgres-setup.sh \
+    --env "PG_USER=$PG_USER" \
+    --env "PG_PASSWORD=$PG_PASSWORD" \
+    --env "PG_DB=$PG_DB" \
+    --env "PG_PORT=$PG_PORT" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying PostgreSQL setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1

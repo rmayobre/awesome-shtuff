@@ -92,6 +92,12 @@ fi
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/mariadb-setup.sh \
+    --env "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" \
+    --env "DB_PORT=$DB_PORT" \
+    --env "DB_NAME=$DB_NAME" \
+    --env "DB_USER=$DB_USER" \
+    --env "DB_USER_PASSWORD=$DB_USER_PASSWORD" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying MariaDB setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1

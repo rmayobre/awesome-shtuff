@@ -186,6 +186,13 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring worldserver s
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/azerothcore-setup.sh \
+    --env "DB_MODE=$DB_MODE" \
+    --env "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" \
+    --env "DB_USER=$DB_USER" \
+    --env "DB_PASS=$DB_PASS" \
+    --env "DB_HOST=$DB_HOST" \
+    --env "DB_PORT=$DB_PORT" \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Deploying AzerothCore setup script" \
