@@ -48,6 +48,7 @@ container network prompt --name "$CT_NAME" || exit 1
 info "Installing Plex Media Server..."
 
 CONTAINER_SCRIPT
+#!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
@@ -93,7 +94,7 @@ container shell-script --name "$CT_NAME" --path /opt/plex-setup.sh \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Plex setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- bash /opt/plex-setup.sh &
+container exec --name "$CT_NAME" -- /opt/plex-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
     --success_msg "Plex Media Server ready" --error_msg "Plex installation failed" || exit 1
 

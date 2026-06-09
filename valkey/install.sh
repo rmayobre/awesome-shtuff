@@ -46,6 +46,7 @@ container network prompt --name "$CT_NAME" || exit 1
 info "Installing and configuring Valkey..."
 
 CONTAINER_SCRIPT
+#!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
@@ -115,7 +116,7 @@ container shell-script --name "$CT_NAME" --path /opt/valkey-setup.sh \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Valkey setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- bash /opt/valkey-setup.sh &
+container exec --name "$CT_NAME" -- /opt/valkey-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring Valkey" \
     --success_msg "Valkey ready" --error_msg "Valkey setup failed" || exit 1
 

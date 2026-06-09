@@ -63,6 +63,7 @@ container network prompt --name "$CT_NAME" || exit 1
 info "Installing OpenCode in container '$CT_NAME'..."
 
 CONTAINER_SCRIPT
+#!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
@@ -97,7 +98,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
     --success_msg "Setup script deployed" \
     --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- bash /opt/opencode-setup.sh &
+container exec --name "$CT_NAME" -- /opt/opencode-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Installing OpenCode" \
     --success_msg "OpenCode ready" \
