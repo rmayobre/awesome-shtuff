@@ -46,7 +46,6 @@ container network prompt --name "$CT_NAME" || exit 1
 info "Installing and configuring Redis..."
 
 CONTAINER_SCRIPT
-#!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
@@ -100,7 +99,7 @@ container shell-script --name "$CT_NAME" --path /opt/redis-setup.sh \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying Redis setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- /opt/redis-setup.sh &
+container exec --name "$CT_NAME" -- bash /opt/redis-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring Redis" \
     --success_msg "Redis ready" --error_msg "Redis setup failed" || exit 1
 

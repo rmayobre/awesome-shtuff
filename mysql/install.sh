@@ -57,7 +57,6 @@ container network prompt --name "$CT_NAME" || exit 1
 info "Installing and configuring MySQL..."
 
 CONTAINER_SCRIPT
-#!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
@@ -107,7 +106,7 @@ container shell-script --name "$CT_NAME" --path /opt/mysql-setup.sh \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying MySQL setup script" \
     --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- /opt/mysql-setup.sh &
+container exec --name "$CT_NAME" -- bash /opt/mysql-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configuring MySQL" \
     --success_msg "MySQL ready" --error_msg "MySQL setup failed" || exit 1
 

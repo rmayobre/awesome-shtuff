@@ -73,8 +73,7 @@ info "Building AzerothCore in container '$CT_NAME'..."
 warn "The build step takes 30-60 minutes. Do not interrupt the process."
 
 CONTAINER_SCRIPT
-#!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
@@ -199,7 +198,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
     --success_msg "Setup script deployed" \
     --error_msg "Setup script deployment failed" || exit 1
 
-container exec --name "$CT_NAME" -- /opt/azerothcore-setup.sh &
+container exec --name "$CT_NAME" -- bash /opt/azerothcore-setup.sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
     --message "Building and configuring AzerothCore" \
     --success_msg "AzerothCore ready" \
