@@ -81,7 +81,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing OpenCode" \
 service \
     --name "opencode" \
     --description "OpenCode Web UI" \
-    --exec-start "opencode web --hostname 0.0.0.0 --port ${OC_PORT}" \
+    --exec-start "$(which opencode) web --hostname 0.0.0.0 --port ${OC_PORT}" \
     --restart "on-failure" \
     --restart-sec 5 &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring OpenCode service" \
