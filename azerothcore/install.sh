@@ -74,7 +74,7 @@ warn "The build step takes 30-60 minutes. Do not interrupt the process."
 
 CONTAINER_SCRIPT
 #!/bin/bash
-source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
