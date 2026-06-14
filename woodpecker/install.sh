@@ -22,6 +22,7 @@ question "External URL Woodpecker will be reachable at (e.g. https://ci.example.
 options "Select the forge (git server) Woodpecker will integrate with" \
     --choice "github" \
     --choice "gitea" \
+    --choice "forgejo" \
     --choice "gitlab" \
     --choice "bitbucket" \
     --choice "skip" \
@@ -50,6 +51,16 @@ WOODPECKER_GITHUB_URL=${WP_FORGE_URL}"
 WOODPECKER_GITEA_URL=${WP_FORGE_URL}
 WOODPECKER_GITEA_CLIENT=${WP_FORGE_CLIENT}
 WOODPECKER_GITEA_SECRET=${WP_FORGE_SECRET}"
+        ;;
+    forgejo)
+        question "Forgejo URL (e.g. https://codeberg.org)" && WP_FORGE_URL="$answer"
+        question "Forgejo OAuth Client ID"     && WP_FORGE_CLIENT="$answer"
+        question "Forgejo OAuth Client Secret" && WP_FORGE_SECRET="$answer"
+
+        WP_FORGE_ENV="WOODPECKER_FORGEJO=true
+WOODPECKER_FORGEJO_URL=${WP_FORGE_URL}
+WOODPECKER_FORGEJO_CLIENT=${WP_FORGE_CLIENT}
+WOODPECKER_FORGEJO_SECRET=${WP_FORGE_SECRET}"
         ;;
     gitlab)
         question "GitLab URL (leave blank for gitlab.com)" && WP_FORGE_URL="${answer:-https://gitlab.com}"
