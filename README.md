@@ -113,6 +113,18 @@ bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/o
 
 ---
 
+## CI/CD
+
+### Woodpecker CI (container)
+
+Installs Woodpecker CI server and agent in a new container. Prompts for resources, web UI/gRPC ports, external URL, forge integration (GitHub, Gitea, GitLab, or Bitbucket), admin users, open registration, and the agent's pipeline backend (local or Docker).
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/woodpecker/install.sh)
+```
+
+---
+
 ## Media
 
 ### Plex Media Server (container)
