@@ -5,6 +5,28 @@ source <(curl -sL https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-
 
 info "Configuring Plex Media Server (container) installation..."
 
+# Distribution
+options "Select distribution" \
+    --choice "debian" \
+    --choice "ubuntu" \
+    && CT_DIST="$answer"
+
+case "$CT_DIST" in
+    debian)
+        options "Select Debian release" \
+            --choice "bullseye" \
+            --choice "bookworm" \
+            && CT_RELEASE="$answer"
+        ;;
+    ubuntu)
+        options "Select Ubuntu release" \
+            --choice "focal" \
+            --choice "jammy" \
+            --choice "noble" \
+            && CT_RELEASE="$answer"
+        ;;
+esac
+
 # Container configuration
 question "Container name [plex]"     && CT_NAME="${answer:-plex}"
 question "Container hostname [plex]" && CT_HOSTNAME="${answer:-plex}"
@@ -32,6 +54,8 @@ container create \
     --memory "$CT_MEMORY" \
     --cores "$CT_CORES" \
     --disk-size "$CT_DISK" \
+    --dist "$CT_DIST" \
+    --release "$CT_RELEASE" \
     --style "$SPINNER_LOADING_STYLE" || exit 1
 
 container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
