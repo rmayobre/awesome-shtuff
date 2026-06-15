@@ -83,6 +83,22 @@ Installs Valkey in a new container. Prompts for port, optional password, and per
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/valkey/install.sh)
 ```
 
+### pgAdmin
+
+Installs pgAdmin4 (web) in a new container. Prompts for web port, admin email/password, and whether the PostgreSQL database is local (installed in-container) or remote (provide host IP). The configured server is pre-registered in pgAdmin.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/pgadmin/install.sh)
+```
+
+### phpMyAdmin
+
+Installs phpMyAdmin in a new container. Prompts for web port and whether the MySQL/MariaDB database is local (installed in-container) or remote (provide host IP and admin password).
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/phpmyadmin/install.sh)
+```
+
 ---
 
 ## AI / LLM
@@ -121,6 +137,18 @@ Installs Woodpecker CI server and agent in a new container. Prompts for resource
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/woodpecker/install.sh)
+```
+
+---
+
+## Game Servers
+
+### AzerothCore (container)
+
+Builds and installs an AzerothCore (WotLK) server in a new container. Prompts for resources, auth/world server ports, and whether the database is local (installs MySQL in-container) or remote (provide host, port, user, and password). The build step takes 30-60 minutes.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/install.sh)
 ```
 
 ---
