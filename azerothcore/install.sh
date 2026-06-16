@@ -109,17 +109,17 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependen
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install lsb-release gnupg &
+    install gnupg lsb-release apt-transport-https ca-certificates &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
         --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
 
-    wget -qO /tmp/mysql-apt-config.deb https://dev.mysql.com/get/mysql-apt-config_0.8.33-1_all.deb &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Downloading MySQL APT config" \
-        --success_msg "MySQL APT config downloaded" --error_msg "Failed to download MySQL APT config" || exit 1
+    mkdir -p /etc/apt/keyrings
+    wget -qO /etc/apt/keyrings/mysql.asc https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Fetching MySQL GPG key" \
+        --success_msg "MySQL GPG key fetched" --error_msg "Failed to fetch MySQL GPG key" || exit 1
 
-    DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/mysql-apt-config.deb &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL APT repository" \
-        --success_msg "MySQL APT repository configured" --error_msg "Failed to configure MySQL APT repository" || exit 1
+    echo "deb [signed-by=/etc/apt/keyrings/mysql.asc] http://repo.mysql.com/apt/debian bookworm mysql-8.0" \
+        > /etc/apt/sources.list.d/mysql.list
 
     update &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
