@@ -109,9 +109,9 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependen
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install lsb-release &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing lsb-release" \
-        --success_msg "lsb-release installed" --error_msg "Failed to install lsb-release" || exit 1
+    install lsb-release gnupg &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
+        --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
 
     wget -qO /tmp/mysql-apt-config.deb https://dev.mysql.com/get/mysql-apt-config_0.8.33-1_all.deb &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Downloading MySQL APT config" \
