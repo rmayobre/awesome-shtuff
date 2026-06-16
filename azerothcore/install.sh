@@ -109,15 +109,15 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependen
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install mysql-server &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
-        --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
+    install mariadb-server &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
+        --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
 
     if [[ "${DB_PORT}" != "3306" ]]; then
-        if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mysql.conf.d/mysqld.cnf; then
-            sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mysql.conf.d/mysqld.cnf
+        if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mariadb.conf.d/50-server.cnf; then
+            sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mariadb.conf.d/50-server.cnf
         else
-            sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mysql.conf.d/mysqld.cnf
+            sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mariadb.conf.d/50-server.cnf
         fi &
         monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL port" \
             --success_msg "MySQL port configured" --error_msg "Failed to configure MySQL port" || exit 1
