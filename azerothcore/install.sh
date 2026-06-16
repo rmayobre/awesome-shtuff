@@ -113,6 +113,16 @@ if [[ "${DB_MODE}" == "local" ]]; then
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
         --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
+    if [[ "${DB_PORT}" != "3306" ]]; then
+        if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mysql.conf.d/mysqld.cnf; then
+            sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mysql.conf.d/mysqld.cnf
+        else
+            sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mysql.conf.d/mysqld.cnf
+        fi &
+        monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL port" \
+            --success_msg "MySQL port configured" --error_msg "Failed to configure MySQL port" || exit 1
+    fi
+
     systemctl enable --now mysql &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
         --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
