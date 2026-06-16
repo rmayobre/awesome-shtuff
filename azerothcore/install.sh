@@ -109,15 +109,27 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependen
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install mariadb-server &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
-        --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
+    wget -qO /tmp/mysql-apt-config.deb https://dev.mysql.com/get/mysql-apt-config_0.8.33-1_all.deb &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Downloading MySQL APT config" \
+        --success_msg "MySQL APT config downloaded" --error_msg "Failed to download MySQL APT config" || exit 1
+
+    DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/mysql-apt-config.deb &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL APT repository" \
+        --success_msg "MySQL APT repository configured" --error_msg "Failed to configure MySQL APT repository" || exit 1
+
+    update &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+        --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+    install mysql-server &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
+        --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
     if [[ "${DB_PORT}" != "3306" ]]; then
-        if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mariadb.conf.d/50-server.cnf; then
-            sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mariadb.conf.d/50-server.cnf
+        if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mysql.conf.d/mysqld.cnf; then
+            sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mysql.conf.d/mysqld.cnf
         else
-            sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mariadb.conf.d/50-server.cnf
+            sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mysql.conf.d/mysqld.cnf
         fi &
         monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring MySQL port" \
             --success_msg "MySQL port configured" --error_msg "Failed to configure MySQL port" || exit 1
