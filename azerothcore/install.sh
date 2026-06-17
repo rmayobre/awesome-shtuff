@@ -114,11 +114,13 @@ if [[ "${DB_MODE}" == "local" ]]; then
         --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
 
     mkdir -p /etc/apt/keyrings
-    wget -qO /etc/apt/keyrings/mysql.asc https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Fetching MySQL GPG key" \
-        --success_msg "MySQL GPG key fetched" --error_msg "Failed to fetch MySQL GPG key" || exit 1
+    gpg --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Importing MySQL GPG key" \
+        --success_msg "MySQL GPG key imported" --error_msg "Failed to import MySQL GPG key" || exit 1
 
-    echo "deb [signed-by=/etc/apt/keyrings/mysql.asc] http://repo.mysql.com/apt/debian bookworm mysql-8.0" \
+    gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
+
+    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian bookworm mysql-8.0" \
         > /etc/apt/sources.list.d/mysql.list
 
     update &
