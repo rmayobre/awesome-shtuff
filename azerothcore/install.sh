@@ -126,7 +126,7 @@ install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libnc
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
-install libmysqlclient-dev &
+install mysql-community-client-core mysql-community-client mysql-community-client-plugins libmysqlclient-dev &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL client library" \
     --success_msg "MySQL client library installed" --error_msg "MySQL client library installation failed" || exit 1
 
