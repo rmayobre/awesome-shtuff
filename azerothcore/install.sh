@@ -176,7 +176,12 @@ CMAKE_VER=$(cmake --version | head -1 | awk '{print $3}')
 CMAKE_MAJOR=$(echo "$CMAKE_VER" | cut -d. -f1)
 CMAKE_MINOR=$(echo "$CMAKE_VER" | cut -d. -f2)
 if [[ "$CMAKE_MAJOR" -lt 3 ]] || { [[ "$CMAKE_MAJOR" -eq 3 ]] && [[ "$CMAKE_MINOR" -lt 22 ]]; }; then
-    CMAKE_ARGS+=(-DCMAKE_THREAD_LIBS_INIT="-lpthread")
+    CMAKE_ARGS+=(
+        -DCMAKE_THREAD_LIBS_INIT="-lpthread"
+        -DCMAKE_HAVE_THREADS_LIBRARY=1
+        -DCMAKE_USE_PTHREADS_INIT=1
+        -DTHREADS_PREFER_PTHREAD_FLAG=ON
+    )
 fi
 
 cmake "${CMAKE_ARGS[@]}" &
