@@ -120,7 +120,7 @@ if [[ "${DB_MODE}" == "local" ]]; then
 
     gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
 
-    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian bookworm mysql-8.0" \
+    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
         > /etc/apt/sources.list.d/mysql.list
 
     update &
@@ -238,6 +238,8 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring worldserver s
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/azerothcore-setup.sh \
+    --env "CT_DIST=$CT_DIST" \
+    --env "CT_RELEASE=$CT_RELEASE" \
     --env "DB_MODE=$DB_MODE" \
     --env "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" \
     --env "DB_USER=$DB_USER" \
