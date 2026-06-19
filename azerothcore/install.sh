@@ -127,7 +127,9 @@ if [[ "${DB_MODE}" == "local" ]]; then
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
         --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-    install mysql-server &
+    debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
+    debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password ${DB_ROOT_PASSWORD}"
+    DEBIAN_FRONTEND=noninteractive install mysql-server &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
         --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
