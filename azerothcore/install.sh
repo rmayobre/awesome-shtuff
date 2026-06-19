@@ -165,6 +165,7 @@ cmake -S /opt/azerothcore -B /opt/azerothcore/build \
     -DCMAKE_INSTALL_PREFIX=/opt/azerothcore/env/dist/ \
     -DCMAKE_C_COMPILER=/usr/bin/clang \
     -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DCMAKE_THREAD_LIBS_INIT="-lpthread" \
     -DWITH_WARNINGS=1 \
     -DTOOLS_BUILD=all \
     -DSCRIPTS=static \
