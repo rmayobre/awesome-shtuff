@@ -172,8 +172,10 @@ CMAKE_ARGS=(
     -DMODULES=static
 )
 
-CMAKE_VER=$(cmake --version | head -1 | grep -oP '[0-9]+\.[0-9]+')
-if awk "BEGIN{exit !($CMAKE_VER < 3.22)}"; then
+CMAKE_VER=$(cmake --version | head -1 | awk '{print $3}')
+CMAKE_MAJOR=$(echo "$CMAKE_VER" | cut -d. -f1)
+CMAKE_MINOR=$(echo "$CMAKE_VER" | cut -d. -f2)
+if [[ "$CMAKE_MAJOR" -lt 3 ]] || { [[ "$CMAKE_MAJOR" -eq 3 ]] && [[ "$CMAKE_MINOR" -lt 22 ]]; }; then
     CMAKE_ARGS+=(-DCMAKE_THREAD_LIBS_INIT="-lpthread")
 fi
 
