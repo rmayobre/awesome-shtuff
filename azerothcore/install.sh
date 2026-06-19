@@ -161,15 +161,23 @@ git clone https://github.com/azerothcore/azerothcore-wotlk.git \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cloning AzerothCore repository" \
     --success_msg "Repository cloned" --error_msg "Failed to clone repository" || exit 1
 
-cmake -S /opt/azerothcore -B /opt/azerothcore/build \
-    -DCMAKE_INSTALL_PREFIX=/opt/azerothcore/env/dist/ \
-    -DCMAKE_C_COMPILER=/usr/bin/clang \
-    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-    -DCMAKE_THREAD_LIBS_INIT="-lpthread" \
-    -DWITH_WARNINGS=1 \
-    -DTOOLS_BUILD=all \
-    -DSCRIPTS=static \
-    -DMODULES=static &
+CMAKE_ARGS=(
+    -S /opt/azerothcore -B /opt/azerothcore/build
+    -DCMAKE_INSTALL_PREFIX=/opt/azerothcore/env/dist/
+    -DCMAKE_C_COMPILER=/usr/bin/clang
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++
+    -DWITH_WARNINGS=1
+    -DTOOLS_BUILD=all
+    -DSCRIPTS=static
+    -DMODULES=static
+)
+
+CMAKE_VER=$(cmake --version | head -1 | grep -oP '[0-9]+\.[0-9]+')
+if awk "BEGIN{exit !($CMAKE_VER < 3.22)}"; then
+    CMAKE_ARGS+=(-DCMAKE_THREAD_LIBS_INIT="-lpthread")
+fi
+
+cmake "${CMAKE_ARGS[@]}" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring build with CMake" \
     --success_msg "CMake configuration complete" --error_msg "CMake configuration failed" || exit 1
 
