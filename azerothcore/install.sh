@@ -14,15 +14,15 @@ options "Select distribution" \
 case "$CT_DIST" in
     debian)
         options "Select Debian release" \
-            --choice "bullseye" \
             --choice "bookworm" \
+            --choice "trixie" \
             && CT_RELEASE="$answer"
         ;;
     ubuntu)
         options "Select Ubuntu release" \
-            --choice "focal" \
             --choice "jammy" \
             --choice "noble" \
+            --choice "oracular" \
             && CT_RELEASE="$answer"
         ;;
 esac
@@ -161,30 +161,14 @@ git clone https://github.com/azerothcore/azerothcore-wotlk.git \
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cloning AzerothCore repository" \
     --success_msg "Repository cloned" --error_msg "Failed to clone repository" || exit 1
 
-CMAKE_ARGS=(
-    -S /opt/azerothcore -B /opt/azerothcore/build
-    -DCMAKE_INSTALL_PREFIX=/opt/azerothcore/env/dist/
-    -DCMAKE_C_COMPILER=/usr/bin/clang
-    -DCMAKE_CXX_COMPILER=/usr/bin/clang++
-    -DWITH_WARNINGS=1
-    -DTOOLS_BUILD=all
-    -DSCRIPTS=static
-    -DMODULES=static
-)
-
-CMAKE_VER=$(cmake --version | head -1 | awk '{print $3}')
-CMAKE_MAJOR=$(echo "$CMAKE_VER" | cut -d. -f1)
-CMAKE_MINOR=$(echo "$CMAKE_VER" | cut -d. -f2)
-if [[ "$CMAKE_MAJOR" -lt 3 ]] || { [[ "$CMAKE_MAJOR" -eq 3 ]] && [[ "$CMAKE_MINOR" -lt 22 ]]; }; then
-    CMAKE_ARGS+=(
-        -DCMAKE_THREAD_LIBS_INIT="-lpthread"
-        -DCMAKE_HAVE_THREADS_LIBRARY=1
-        -DCMAKE_USE_PTHREADS_INIT=1
-        -DTHREADS_PREFER_PTHREAD_FLAG=ON
-    )
-fi
-
-cmake "${CMAKE_ARGS[@]}" &
+cmake -S /opt/azerothcore -B /opt/azerothcore/build \
+    -DCMAKE_INSTALL_PREFIX=/opt/azerothcore/env/dist/ \
+    -DCMAKE_C_COMPILER=/usr/bin/clang \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DWITH_WARNINGS=1 \
+    -DTOOLS_BUILD=all \
+    -DSCRIPTS=static \
+    -DMODULES=static &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring build with CMake" \
     --success_msg "CMake configuration complete" --error_msg "CMake configuration failed" || exit 1
 
