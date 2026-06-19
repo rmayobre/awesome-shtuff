@@ -122,7 +122,7 @@ update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev &
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
@@ -225,7 +225,7 @@ mkdir -p \
 service \
     --name "acore-auth" \
     --description "AzerothCore Authserver" \
-    --exec-start "/opt/azerothcore/env/dist/bin/authserver --config /opt/azerothcore/env/dist/etc/authserver.conf" \
+    --exec-start "/usr/bin/screen -DmS acore-auth /opt/azerothcore/env/dist/bin/authserver --config /opt/azerothcore/env/dist/etc/authserver.conf" \
     --restart "on-failure" \
     --restart-sec 5 &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring authserver service" \
@@ -235,7 +235,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring authserver se
 service \
     --name "acore-world" \
     --description "AzerothCore Worldserver" \
-    --exec-start "/opt/azerothcore/env/dist/bin/worldserver --config /opt/azerothcore/env/dist/etc/worldserver.conf" \
+    --exec-start "/usr/bin/screen -DmS acore-world /opt/azerothcore/env/dist/bin/worldserver --config /opt/azerothcore/env/dist/etc/worldserver.conf" \
     --restart "on-failure" \
     --restart-sec 10 &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring worldserver service" \
@@ -274,8 +274,8 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
     --error_msg "Cleanup failed"
 
 info "AzerothCore installed successfully in container '$CT_NAME'!"
-info "  Authserver  : port $AUTH_PORT  (service: acore-auth)"
-info "  Worldserver : port $WORLD_PORT (service: acore-world)"
+info "  Authserver  : port $AUTH_PORT  (service: acore-auth, screen: screen -r acore-auth)"
+info "  Worldserver : port $WORLD_PORT (service: acore-world, screen: screen -r acore-world)"
 info "  Database    : ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
 info "  Install dir : /opt/azerothcore/env/dist/"
 info "  Config dir  : /opt/azerothcore/env/dist/etc/"
