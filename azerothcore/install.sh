@@ -104,29 +104,29 @@ update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev default-libmysqlclient-dev &
+install gnupg lsb-release apt-transport-https ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
+    --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
+
+mkdir -p /etc/apt/keyrings
+gpg --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Importing MySQL GPG key" \
+    --success_msg "MySQL GPG key imported" --error_msg "Failed to import MySQL GPG key" || exit 1
+
+gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
+    > /etc/apt/sources.list.d/mysql.list
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev libmysqlclient-dev &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install gnupg lsb-release apt-transport-https ca-certificates &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
-        --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
-
-    mkdir -p /etc/apt/keyrings
-    gpg --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Importing MySQL GPG key" \
-        --success_msg "MySQL GPG key imported" --error_msg "Failed to import MySQL GPG key" || exit 1
-
-    gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
-
-    echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
-        > /etc/apt/sources.list.d/mysql.list
-
-    update &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
-        --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
-
     debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
     debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password ${DB_ROOT_PASSWORD}"
     DEBIAN_FRONTEND=noninteractive install mysql-server &
