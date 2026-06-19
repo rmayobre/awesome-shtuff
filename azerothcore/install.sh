@@ -122,9 +122,14 @@ update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev libmysqlclient-dev &
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
+
+apt-get remove -y default-libmysqlclient-dev libmariadb-dev-compat libmariadb-dev 2>/dev/null || true
+install libmysqlclient-dev &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL client library" \
+    --success_msg "MySQL client library installed" --error_msg "MySQL client library installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
     debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
