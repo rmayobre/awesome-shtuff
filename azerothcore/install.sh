@@ -191,17 +191,17 @@ cp /opt/azerothcore/env/dist/etc/worldserver.conf.dist \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to copy worldserver config"; exit 1; }
 
-sed -i 's|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth"|' \
+sed -i "s|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth\"|" \
     /opt/azerothcore/env/dist/etc/authserver.conf \
     || { error "Failed to configure authserver database connection"; exit 1; }
 
-sed -i 's|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth"|' \
+sed -i "s|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver login database connection"; exit 1; }
-sed -i 's|^WorldDatabaseInfo\s*=.*|WorldDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_world"|' \
+sed -i "s|^WorldDatabaseInfo\s*=.*|WorldDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_world\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver world database connection"; exit 1; }
-sed -i 's|^CharacterDatabaseInfo\s*=.*|CharacterDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_characters"|' \
+sed -i "s|^CharacterDatabaseInfo\s*=.*|CharacterDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_characters\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver character database connection"; exit 1; }
 
