@@ -14,15 +14,15 @@ options "Select distribution" \
 case "$CT_DIST" in
     debian)
         options "Select Debian release" \
-            --choice "bullseye" \
             --choice "bookworm" \
+            --choice "trixie" \
             && CT_RELEASE="$answer"
         ;;
     ubuntu)
         options "Select Ubuntu release" \
-            --choice "focal" \
             --choice "jammy" \
             --choice "noble" \
+            --choice "oracular" \
             && CT_RELEASE="$answer"
         ;;
 esac
@@ -104,12 +104,36 @@ update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev default-libmysqlclient-dev &
+install gnupg lsb-release apt-transport-https ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
+    --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
+
+mkdir -p /etc/apt/keyrings
+gpg --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Importing MySQL GPG key" \
+    --success_msg "MySQL GPG key imported" --error_msg "Failed to import MySQL GPG key" || exit 1
+
+gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
+    > /etc/apt/sources.list.d/mysql.list
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
+install mysql-community-client-core mysql-community-client mysql-community-client-plugins libmysqlclient-dev &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL client library" \
+    --success_msg "MySQL client library installed" --error_msg "MySQL client library installation failed" || exit 1
+
 if [[ "${DB_MODE}" == "local" ]]; then
-    install mysql-server &
+    debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
+    debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password ${DB_ROOT_PASSWORD}"
+    DEBIAN_FRONTEND=noninteractive install mysql-server &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
         --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
@@ -127,11 +151,11 @@ if [[ "${DB_MODE}" == "local" ]]; then
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
         --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
 
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${DB_ROOT_PASSWORD}'; DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+    mysql -u root -p"${DB_ROOT_PASSWORD}" -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL" \
         --success_msg "MySQL secured" --error_msg "Failed to secure MySQL" || exit 1
 
-    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}'; CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}'; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'localhost' WITH GRANT OPTION; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION; FLUSH PRIVILEGES;" &
+    mysql -u root -p"${DB_ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}'; CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}'; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'localhost' WITH GRANT OPTION; GRANT ALL PRIVILEGES ON *.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION; FLUSH PRIVILEGES;" &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring AzerothCore database user" \
         --success_msg "Database user configured" --error_msg "Failed to configure database user" || exit 1
 fi
@@ -167,17 +191,17 @@ cp /opt/azerothcore/env/dist/etc/worldserver.conf.dist \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to copy worldserver config"; exit 1; }
 
-sed -i 's|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth"|' \
+sed -i "s|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth\"|" \
     /opt/azerothcore/env/dist/etc/authserver.conf \
     || { error "Failed to configure authserver database connection"; exit 1; }
 
-sed -i 's|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth"|' \
+sed -i "s|^LoginDatabaseInfo\s*=.*|LoginDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_auth\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver login database connection"; exit 1; }
-sed -i 's|^WorldDatabaseInfo\s*=.*|WorldDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_world"|' \
+sed -i "s|^WorldDatabaseInfo\s*=.*|WorldDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_world\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver world database connection"; exit 1; }
-sed -i 's|^CharacterDatabaseInfo\s*=.*|CharacterDatabaseInfo = "${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_characters"|' \
+sed -i "s|^CharacterDatabaseInfo\s*=.*|CharacterDatabaseInfo = \"${DB_HOST};${DB_PORT};${DB_USER};${DB_PASS};acore_characters\"|" \
     /opt/azerothcore/env/dist/etc/worldserver.conf \
     || { error "Failed to configure worldserver character database connection"; exit 1; }
 
@@ -201,7 +225,7 @@ mkdir -p \
 service \
     --name "acore-auth" \
     --description "AzerothCore Authserver" \
-    --exec-start "/opt/azerothcore/env/dist/bin/authserver --config /opt/azerothcore/env/dist/etc/authserver.conf" \
+    --exec-start "/usr/bin/screen -DmS acore-auth /opt/azerothcore/env/dist/bin/authserver --config /opt/azerothcore/env/dist/etc/authserver.conf" \
     --restart "on-failure" \
     --restart-sec 5 &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring authserver service" \
@@ -211,7 +235,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring authserver se
 service \
     --name "acore-world" \
     --description "AzerothCore Worldserver" \
-    --exec-start "/opt/azerothcore/env/dist/bin/worldserver --config /opt/azerothcore/env/dist/etc/worldserver.conf" \
+    --exec-start "/usr/bin/screen -DmS acore-world /opt/azerothcore/env/dist/bin/worldserver --config /opt/azerothcore/env/dist/etc/worldserver.conf" \
     --restart "on-failure" \
     --restart-sec 10 &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring worldserver service" \
@@ -220,6 +244,8 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring worldserver s
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/azerothcore-setup.sh \
+    --env "CT_DIST=$CT_DIST" \
+    --env "CT_RELEASE=$CT_RELEASE" \
     --env "DB_MODE=$DB_MODE" \
     --env "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" \
     --env "DB_USER=$DB_USER" \
@@ -248,8 +274,8 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
     --error_msg "Cleanup failed"
 
 info "AzerothCore installed successfully in container '$CT_NAME'!"
-info "  Authserver  : port $AUTH_PORT  (service: acore-auth)"
-info "  Worldserver : port $WORLD_PORT (service: acore-world)"
+info "  Authserver  : port $AUTH_PORT  (service: acore-auth, screen: screen -r acore-auth)"
+info "  Worldserver : port $WORLD_PORT (service: acore-world, screen: screen -r acore-world)"
 info "  Database    : ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
 info "  Install dir : /opt/azerothcore/env/dist/"
 info "  Config dir  : /opt/azerothcore/env/dist/etc/"
