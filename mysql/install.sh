@@ -14,15 +14,15 @@ options "Select distribution" \
 case "$CT_DIST" in
     debian)
         options "Select Debian release" \
-            --choice "bullseye" \
             --choice "bookworm" \
+            --choice "trixie" \
             && CT_RELEASE="$answer"
         ;;
     ubuntu)
         options "Select Ubuntu release" \
-            --choice "focal" \
             --choice "jammy" \
             --choice "noble" \
+            --choice "oracular" \
             && CT_RELEASE="$answer"
         ;;
 esac
@@ -84,43 +84,65 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
+locale "en_US.UTF-8" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring locale" \
+    --success_msg "Locale configured" --error_msg "Failed to configure locale" || exit 1
+
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-echo "mysql-server mysql-server/root_password password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
-    || { error "Failed to pre-configure MySQL root password"; exit 1; }
-echo "mysql-server mysql-server/root_password_again password ${DB_ROOT_PASSWORD}" | debconf-set-selections \
-    || { error "Failed to pre-configure MySQL root password confirmation"; exit 1; }
+install gnupg lsb-release apt-transport-https ca-certificates &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
+    --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
 
-install mysql-server &
+mkdir -p /etc/apt/keyrings
+gpg --keyserver keyserver.ubuntu.com --recv-keys B7B3B788A8D3785C &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Importing MySQL GPG key" \
+    --success_msg "MySQL GPG key imported" --error_msg "Failed to import MySQL GPG key" || exit 1
+
+gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
+    > /etc/apt/sources.list.d/mysql.list
+
+update &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
+    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+
+debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
+debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password ${DB_ROOT_PASSWORD}"
+
+DEBIAN_FRONTEND=noninteractive install mysql-server &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
     --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
+
+if [[ "${DB_PORT}" != "3306" ]]; then
+    if grep -q '^\s*#*\s*port\s*=' /etc/mysql/mysql.conf.d/mysqld.cnf; then
+        sed -i "s|^\s*#*\s*port\s*=.*|port = ${DB_PORT}|" /etc/mysql/mysql.conf.d/mysqld.cnf
+    else
+        sed -i "/^\[mysqld\]/a port = ${DB_PORT}" /etc/mysql/mysql.conf.d/mysqld.cnf
+    fi
+fi
 
 systemctl enable --now mysql &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MySQL service" \
     --success_msg "MySQL service started" --error_msg "Failed to start MySQL service" || exit 1
 
-mysql -u root -p'${DB_ROOT_PASSWORD}' -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
+mysql -u root -p"${DB_ROOT_PASSWORD}" -e "DELETE FROM mysql.user WHERE User=''; DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'); DROP DATABASE IF EXISTS test; DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'; FLUSH PRIVILEGES;" &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Securing MySQL" \
     --success_msg "MySQL secured" --error_msg "Failed to secure MySQL" || exit 1
 
-if [[ "${DB_PORT}" != "3306" ]]; then
-    echo -e '[mysqld]\nport = ${DB_PORT}' >> /etc/mysql/mysql.conf.d/mysqld.cnf \
-        || { error "Failed to write port configuration"; exit 1; }
-    systemctl restart mysql &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Restarting MySQL" \
-        --success_msg "MySQL restarted" --error_msg "Failed to restart MySQL" || exit 1
-fi
-
 if [[ -n "${DB_NAME}" ]]; then
-    mysql -u root -p'${DB_ROOT_PASSWORD}' -e "CREATE DATABASE \`${DB_NAME}\`; CREATE USER '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;" &
+    mysql -u root -p"${DB_ROOT_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`; CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_USER_PASSWORD}'; GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;" &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Creating database '${DB_NAME}' and user '${DB_USER}'" \
         --success_msg "Database and user created" --error_msg "Failed to create database and user" || exit 1
 fi
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/mysql-setup.sh \
+    --env "CT_DIST=$CT_DIST" \
+    --env "CT_RELEASE=$CT_RELEASE" \
     --env "DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD" \
     --env "DB_PORT=$DB_PORT" \
     --env "DB_NAME=$DB_NAME" \
