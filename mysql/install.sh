@@ -84,6 +84,12 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
+apt-get update -qq && apt-get install -y locales > /dev/null 2>&1
+sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+locale-gen en_US.UTF-8 > /dev/null 2>&1
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
