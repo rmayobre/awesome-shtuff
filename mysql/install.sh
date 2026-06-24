@@ -14,15 +14,15 @@ options "Select distribution" \
 case "$CT_DIST" in
     debian)
         options "Select Debian release" \
-            --choice "bullseye" \
             --choice "bookworm" \
+            --choice "trixie" \
             && CT_RELEASE="$answer"
         ;;
     ubuntu)
         options "Select Ubuntu release" \
-            --choice "focal" \
             --choice "jammy" \
             --choice "noble" \
+            --choice "oracular" \
             && CT_RELEASE="$answer"
         ;;
 esac
