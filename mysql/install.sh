@@ -84,10 +84,6 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-locale "en_US.UTF-8" &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Configuring locale" \
-    --success_msg "Locale configured" --error_msg "Failed to configure locale" || exit 1
-
 update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
