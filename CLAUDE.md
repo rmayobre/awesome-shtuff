@@ -61,8 +61,10 @@ question "Container name [my-app]" && CT_NAME="${answer:-my-app}"
 # Numbered menu
 options "Select distribution" "debian" "ubuntu" "alpine" && CT_DIST="$answer"
 
-# Yes/No confirmation
-confirm "Enable HTTPS?" && ENABLE_HTTPS="$answer"
+# Yes/No confirmation (returns 0 for yes, 1 for no; sets $answer to "yes"/"no")
+if confirm "Enable HTTPS?"; then
+    ENABLE_HTTPS="yes"
+fi
 ```
 
 Validate required inputs and exit with an error if they are missing or invalid.
@@ -154,7 +156,7 @@ question "Disk size in GB [8]"            && CT_DISK="${answer:-8}"
 
 # Project-specific configuration
 question "Application port [8080]"        && APP_PORT="${answer:-8080}"
-confirm "Enable HTTPS?"                   && ENABLE_HTTPS="$answer"
+if confirm "Enable HTTPS?"; then ENABLE_HTTPS="yes"; else ENABLE_HTTPS="no"; fi
 # Add more prompts as needed for the project
 
 # ─── Container Creation ───────────────────────────────────────────────────────

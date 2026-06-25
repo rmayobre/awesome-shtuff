@@ -39,10 +39,11 @@ question "Ollama listen port [11434]"  && OLLAMA_PORT="${answer:-11434}"
 
 CT_GPU=""
 CT_GPU_PCIE="no"
-confirm "Enable GPU passthrough (requires GPU on host)?" && ENABLE_GPU="$answer"
-if [[ "$ENABLE_GPU" == "true" || "$ENABLE_GPU" == "yes" ]]; then
+if confirm "Enable GPU passthrough (requires GPU on host)?"; then
     gpu_select && CT_GPU="$answer"
-    confirm "Enable PCIe passthrough mode (PCT only)?" && CT_GPU_PCIE="$answer"
+    if confirm "Enable PCIe passthrough mode (PCT only)?"; then
+        CT_GPU_PCIE="yes"
+    fi
 fi
 
 question "Pull a model after install? (e.g. llama3, mistral — leave blank to skip)" \
@@ -65,7 +66,7 @@ CONTAINER_ARGS=(
 
 if [[ -n "$CT_GPU" ]]; then
     CONTAINER_ARGS+=(--gpu "$CT_GPU")
-    if [[ "$CT_GPU_PCIE" == "true" || "$CT_GPU_PCIE" == "yes" ]]; then
+    if [[ "$CT_GPU_PCIE" == "yes" ]]; then
         CONTAINER_ARGS+=(--pcie)
     fi
 fi

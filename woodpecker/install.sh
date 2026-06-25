@@ -110,7 +110,7 @@ esac
 question "Admin username(s) on the forge, comma-separated (leave blank to skip)" \
     && WP_ADMIN="${answer:-}"
 
-confirm "Allow open user registration?" && WP_OPEN="$answer"
+if confirm "Allow open user registration?"; then WP_OPEN="true"; else WP_OPEN="false"; fi
 
 # Agent configuration
 options "Select the pipeline execution backend for the agent" \

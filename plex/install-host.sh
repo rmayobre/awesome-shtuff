@@ -9,8 +9,10 @@ question "Plex port [32400]" && PLEX_PORT="${answer:-32400}"
 question "Media library path (leave blank to configure later)" \
     && MEDIA_PATH="${answer:-}"
 
-confirm "Plex will be installed directly on this host. Continue?" \
-    && [[ "$answer" != "yes" ]] && { info "Aborted."; exit 0; }
+if ! confirm "Plex will be installed directly on this host. Continue?"; then
+    info "Aborted."
+    exit 0
+fi
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 

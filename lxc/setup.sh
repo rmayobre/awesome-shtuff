@@ -12,8 +12,10 @@ LXC_SUBNET="${LXC_BRIDGE_IP%.*}.0/24"
 LXC_NETMASK="255.255.255.0"
 LXC_DHCP_RANGE="${LXC_BRIDGE_IP%.*}.2,${LXC_BRIDGE_IP%.*}.254"
 
-confirm "This will modify kernel parameters and network settings on this host. Continue?" \
-    && [[ "$answer" != "yes" && "$answer" != "true" ]] && { info "Aborted."; exit 0; }
+if ! confirm "This will modify kernel parameters and network settings on this host. Continue?"; then
+    info "Aborted."
+    exit 0
+fi
 
 # ─── Install LXC ─────────────────────────────────────────────────────────────
 
