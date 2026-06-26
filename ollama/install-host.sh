@@ -14,14 +14,12 @@ question "Pull a model after install? (e.g. llama3, mistral — leave blank to s
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
+update --style "$SPINNER_LOADING_STYLE" \
     --message "Updating packages" \
     --success_msg "Packages updated" \
     --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
+install curl ca-certificates --style "$SPINNER_LOADING_STYLE" \
     --message "Installing dependencies" \
     --success_msg "Dependencies installed" \
     --error_msg "Dependency installation failed" || exit 1
@@ -61,8 +59,7 @@ fi
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
+clean --style "$SPINNER_LOADING_STYLE" \
     --message "Cleaning up" \
     --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"

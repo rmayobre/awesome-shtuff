@@ -88,12 +88,10 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+install curl ca-certificates --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://ollama.com/install.sh | sh &
@@ -135,8 +133,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
+clean --style "$SPINNER_LOADING_STYLE" \
     --message "Cleaning up" \
     --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"

@@ -73,12 +73,10 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl gpg &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+install curl gpg --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://packages.valkey.io/valkey-signing.gpg \
@@ -89,12 +87,10 @@ echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://pac
     | tee /etc/apt/sources.list.d/valkey.list \
     || { error "Failed to add Valkey repository"; exit 1; }
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install valkey &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
+install valkey --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
     --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
 
 sed -i 's/^port .*/port ${VALKEY_PORT}/' /etc/valkey/valkey.conf \
@@ -146,8 +142,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Valkey installed successfully in container '$CT_NAME'!"

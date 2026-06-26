@@ -73,12 +73,10 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install redis-server &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
+install redis-server --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
     --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
 
 sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf \
@@ -130,8 +128,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Redis installed successfully in container '$CT_NAME'!"

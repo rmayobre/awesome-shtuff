@@ -99,21 +99,34 @@ container network prompt --name "$CT_NAME" || exit 1
 
 ### 4. Software Installation Inside the Container
 
-After creating the container, install the project's dependencies and software **inside** it using `container exec`. Run commands in the background and monitor them with `monitor`:
+After creating the container, deploy a `CONTAINER_SCRIPT` block that runs inside the container. Use shtuff's `update`, `install`, and `clean` functions directly — they handle backgrounding and `monitor` internally. Pass `--message`, `--style`, `--success_msg`, and `--error_msg` flags to customize the loading indicator:
 
 ```bash
-# Update packages inside the container
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
+
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-# Install dependencies inside the container
-container exec --name "$CT_NAME" -- apt-get install -y curl wget <dep1> <dep2> &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+install curl wget <dep1> <dep2> --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
-# Push configuration files into the container
-container push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
+# Non-shtuff commands still require manual & + monitor
+systemctl enable --now <project> &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting service" \
+    --success_msg "Service started" --error_msg "Failed to start service" || exit 1
+CONTAINER_SCRIPT_EOD
+
+container shell-script --name "$CT_NAME" --path /opt/<project>-setup.sh \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
+
+container exec --name "$CT_NAME" -- /opt/<project>-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing <project>" \
+    --success_msg "<project> ready" --error_msg "<project> setup failed" || exit 1
 ```
 
 ### 5. Logging
@@ -130,8 +143,7 @@ Use shtuff's logging functions throughout:
 Every install script **must** end with a dependency cleanup step on the **host** system:
 
 ```bash
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 ```
 
@@ -178,31 +190,41 @@ container start --name "$CT_NAME" --style "$SPINNER_LOADING_STYLE" || exit 1
 info "Configuring network for container '$CT_NAME'..."
 container network prompt --name "$CT_NAME" || exit 1
 
-# ─── Dependencies Inside Container ────────────────────────────────────────────
-
-container exec --name "$CT_NAME" -- apt-get update -qq &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages in container" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
-
-container exec --name "$CT_NAME" -- apt-get install -y <dep1> <dep2> &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
-
-# ─── Installation Steps ───────────────────────────────────────────────────────
+# ─── Setup Inside Container ───────────────────────────────────────────────────
 
 info "Installing <project-name>..."
-# ... project-specific installation logic inside the container ...
-# container exec --name "$CT_NAME" -- <install command>
+
+CONTAINER_SCRIPT
+#!/bin/bash
+source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
+
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+
+install <dep1> <dep2> --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+
+# ... project-specific installation logic ...
+
 # container push --name "$CT_NAME" --source "./config.yml" --dest "/etc/<project>/config.yml"
+# systemctl enable --now <project> &
+# monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting service" \
+#     --success_msg "Service started" --error_msg "Failed to start service" || exit 1
+CONTAINER_SCRIPT_EOD
 
-# ─── Service Setup (if applicable) ────────────────────────────────────────────
+container shell-script --name "$CT_NAME" --path /opt/<project>-setup.sh \
+    --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
+    --style "$SPINNER_LOADING_STYLE" &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Deploying setup script" \
+    --success_msg "Setup script deployed" --error_msg "Setup script deployment failed" || exit 1
 
-# container exec --name "$CT_NAME" -- systemctl enable --now <project>
+container exec --name "$CT_NAME" -- /opt/<project>-setup.sh &
+monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing <project-name>" \
+    --success_msg "<project-name> ready" --error_msg "<project-name> setup failed" || exit 1
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "<project-name> installed successfully in container '$CT_NAME'!"

@@ -100,12 +100,10 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install gnupg lsb-release apt-transport-https ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
+install gnupg lsb-release apt-transport-https ca-certificates --style "$SPINNER_LOADING_STYLE" --message "Installing prerequisites" \
     --success_msg "Prerequisites installed" --error_msg "Failed to install prerequisites" || exit 1
 
 mkdir -p /etc/apt/keyrings
@@ -118,23 +116,19 @@ gpg --export B7B3B788A8D3785C > /etc/apt/keyrings/mysql.gpg
 echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/${CT_DIST} ${CT_RELEASE} mysql-8.0" \
     > /etc/apt/sources.list.d/mysql.list
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
-install mysql-community-client-core mysql-community-client mysql-community-client-plugins libmysqlclient-dev &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL client library" \
+install mysql-community-client-core mysql-community-client mysql-community-client-plugins libmysqlclient-dev --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL client library" \
     --success_msg "MySQL client library installed" --error_msg "MySQL client library installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
     debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password ${DB_ROOT_PASSWORD}"
     debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password ${DB_ROOT_PASSWORD}"
-    DEBIAN_FRONTEND=noninteractive install mysql-server &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
+    DEBIAN_FRONTEND=noninteractive install mysql-server --style "$SPINNER_LOADING_STYLE" --message "Installing MySQL" \
         --success_msg "MySQL installed" --error_msg "MySQL installation failed" || exit 1
 
     if [[ "${DB_PORT}" != "3306" ]]; then
@@ -267,8 +261,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
+clean --style "$SPINNER_LOADING_STYLE" \
     --message "Cleaning up" \
     --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"

@@ -74,12 +74,10 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install postgresql postgresql-contrib &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
+install postgresql postgresql-contrib --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
     --success_msg "PostgreSQL installed" --error_msg "PostgreSQL installation failed" || exit 1
 
 systemctl enable --now postgresql &
@@ -115,8 +113,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "PostgreSQL installed successfully in container '$CT_NAME'!"

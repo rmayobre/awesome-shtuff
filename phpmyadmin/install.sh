@@ -99,17 +99,14 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install apache2 php php-mbstring php-zip php-curl php-mysqli libapache2-mod-php &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing web stack" \
+install apache2 php php-mbstring php-zip php-curl php-mysqli libapache2-mod-php --style "$SPINNER_LOADING_STYLE" --message "Installing web stack" \
     --success_msg "Web stack installed" --error_msg "Web stack installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install mariadb-server &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
+    install mariadb-server --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
         --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
 
     systemctl enable --now mariadb &
@@ -184,8 +181,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "phpMyAdmin installed successfully in container '$CT_NAME'!"

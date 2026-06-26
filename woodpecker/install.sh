@@ -149,17 +149,14 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
+update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
     --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates openssl git &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+install curl ca-certificates openssl git --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 if [[ "${WP_BACKEND}" == "docker" ]]; then
-    install docker.io &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Docker" \
+    install docker.io --style "$SPINNER_LOADING_STYLE" --message "Installing Docker" \
         --success_msg "Docker installed" --error_msg "Docker installation failed" || exit 1
 
     systemctl enable --now docker &
@@ -258,8 +255,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
+clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
     --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Woodpecker CI installed successfully in container '$CT_NAME'!"
