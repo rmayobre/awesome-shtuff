@@ -73,11 +73,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install redis-server --style "$SPINNER_LOADING_STYLE" --message "Installing Redis" \
-    --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
+install redis-server --success_msg "Redis installed" --error_msg "Redis installation failed" || exit 1
 
 sed -i 's/^port .*/port ${REDIS_PORT}/' /etc/redis/redis.conf \
     || { error "Failed to configure Redis port"; exit 1; }
@@ -128,8 +126,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Redis installed successfully in container '$CT_NAME'!"
 info "Redis is listening on port $REDIS_PORT."

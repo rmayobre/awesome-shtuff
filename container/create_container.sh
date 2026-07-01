@@ -21,11 +21,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install ca-certificates curl wget --style "$SPINNER_LOADING_STYLE" --message "Installing base utilities" \
-    --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
+install ca-certificates curl wget --success_msg "Base utilities installed" --error_msg "Base utility installation failed" || exit 1
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CONTAINER_NAME" --path /opt/setup.sh \
@@ -44,9 +42,6 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" \
-    --message "Cleaning up" \
-    --success_msg "Cleanup complete" \
-    --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Container '$CONTAINER_NAME' is ready!"
