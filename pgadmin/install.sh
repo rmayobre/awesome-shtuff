@@ -101,14 +101,13 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates gnupg lsb-release apache2 --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
+install curl ca-certificates gnupg lsb-release apache2 \
     --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 if [[ "${DB_MODE}" == "local" ]]; then
-    install postgresql postgresql-contrib --style "$SPINNER_LOADING_STYLE" --message "Installing PostgreSQL" \
+    install postgresql postgresql-contrib \
         --success_msg "PostgreSQL installed" --error_msg "PostgreSQL installation failed" || exit 1
 
     systemctl enable --now postgresql &
@@ -134,7 +133,7 @@ fi
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding PostgreSQL APT repository" \
     --success_msg "PostgreSQL APT repository added" --error_msg "Failed to add PostgreSQL APT repository" || exit 1
 
-install pgadmin4-web --style "$SPINNER_LOADING_STYLE" --message "Installing pgAdmin4" \
+install pgadmin4-web \
     --success_msg "pgAdmin4 installed" --error_msg "pgAdmin4 installation failed" || exit 1
 
 PGADMIN_SETUP_EMAIL="${PGADMIN_EMAIL}" PGADMIN_SETUP_PASSWORD="${PGADMIN_PASSWORD}" /usr/pgadmin4/bin/setup-web.sh --yes &
@@ -194,8 +193,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "pgAdmin installed successfully in container '$CT_NAME'!"
 info "  Web UI : http://<container-ip>:$PGADMIN_PORT"

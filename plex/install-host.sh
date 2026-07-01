@@ -16,11 +16,9 @@ fi
 
 # ─── Dependencies ─────────────────────────────────────────────────────────────
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl wget gnupg2 ca-certificates --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl wget gnupg2 ca-certificates --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 # ─── Plex Repository Setup ────────────────────────────────────────────────────
 
@@ -36,15 +34,13 @@ echo "deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downl
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Adding Plex repository" \
     --success_msg "Plex repository added" --error_msg "Failed to add Plex repository" || exit 1
 
-update --style "$SPINNER_LOADING_STYLE" --message "Refreshing package lists" \
-    --success_msg "Package lists refreshed" --error_msg "Package list refresh failed" || exit 1
+update --success_msg "Package lists refreshed" --error_msg "Package list refresh failed" || exit 1
 
 # ─── Plex Installation ────────────────────────────────────────────────────────
 
 info "Installing Plex Media Server..."
 
-install plexmediaserver --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
-    --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
+install plexmediaserver --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
 
 # ─── Media Library Permissions (optional) ─────────────────────────────────────
 
@@ -68,8 +64,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Enabling Plex Media Serve
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Plex Media Server installed successfully on this host!"
 info "Access the web UI at: http://localhost:${PLEX_PORT}/web"

@@ -21,11 +21,9 @@ fi
 
 info "Installing LXC..."
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install lxc lxc-utils uidmap --style "$SPINNER_LOADING_STYLE" --message "Installing LXC" \
-    --success_msg "LXC installed" --error_msg "LXC installation failed" || exit 1
+install lxc lxc-utils uidmap --success_msg "LXC installed" --error_msg "LXC installation failed" || exit 1
 
 # ─── Network Bridge Configuration ─────────────────────────────────────────────
 
@@ -112,8 +110,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting LXC network brid
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "LXC setup complete!"
 info "  Bridge : lxcbr0 (${LXC_BRIDGE_IP})"

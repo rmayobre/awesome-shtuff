@@ -99,18 +99,16 @@ container network prompt --name "$CT_NAME" || exit 1
 
 ### 4. Software Installation Inside the Container
 
-After creating the container, deploy a `CONTAINER_SCRIPT` block that runs inside the container. Use shtuff's `update`, `install`, and `clean` functions directly — they handle backgrounding and `monitor` internally. Pass `--message`, `--style`, `--success_msg`, and `--error_msg` flags to customize the loading indicator:
+After creating the container, deploy a `CONTAINER_SCRIPT` block that runs inside the container. Use shtuff's `update`, `install`, and `clean` functions directly — they handle backgrounding and `monitor` internally. Pass `--success_msg` and `--error_msg` to customize messages; omit `--style` and `--message` to use shtuff's defaults:
 
 ```bash
 CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl wget <dep1> <dep2> --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl wget <dep1> <dep2> --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 # Non-shtuff commands still require manual & + monitor
 systemctl enable --now <project> &
@@ -143,8 +141,7 @@ Use shtuff's logging functions throughout:
 Every install script **must** end with a dependency cleanup step on the **host** system:
 
 ```bash
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 ```
 
 This removes orphaned packages and clears the package manager cache on the host after the container is created.
@@ -198,11 +195,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install <dep1> <dep2> --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install <dep1> <dep2> --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 # ... project-specific installation logic ...
 
@@ -224,8 +219,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing <project-name>
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "<project-name> installed successfully in container '$CT_NAME'!"
 ```
