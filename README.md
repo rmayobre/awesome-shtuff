@@ -151,6 +151,14 @@ Builds and installs an AzerothCore (WotLK) server in a new container. Prompts fo
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/install.sh)
 ```
 
+### AzerothCore (host)
+
+Builds and installs an AzerothCore (WotLK) server directly on the host. Prompts for the AzerothCore git URL, auth/world server ports, and whether the database is local (installs MySQL on the host) or remote (provide host, port, user, and password). The build step takes 30-60 minutes.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/install-host.sh)
+```
+
 ---
 
 ## Media
