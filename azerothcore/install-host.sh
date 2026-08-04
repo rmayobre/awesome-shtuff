@@ -10,6 +10,7 @@ DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-acore}"
 DB_PASS="${DB_PASS:-acore}"
+CLIENT_DATA_URL="${CLIENT_DATA_URL:-}"
 
 # ─── User Configuration ────────────────────────────────────────────────────────
 
@@ -21,6 +22,10 @@ question "AzerothCore git URL [$AZEROTHCORE_GIT_URL]" \
 # Server ports
 question "Auth server port [3724]"          && AUTH_PORT="${answer:-3724}"
 question "World server port [8085]"         && WORLD_PORT="${answer:-8085}"
+
+# Client data
+question "Client data zip URL (leave blank to add data manually later) [$CLIENT_DATA_URL]" \
+    && CLIENT_DATA_URL="${answer:-$CLIENT_DATA_URL}"
 
 # Database setup
 options "Database setup" \
@@ -83,7 +88,7 @@ update &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists with MySQL repo" \
     --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen &
+install git cmake make gcc g++ clang libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev screen unzip &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing build dependencies" \
     --success_msg "Build dependencies installed" --error_msg "Build dependency installation failed" || exit 1
 
@@ -189,6 +194,18 @@ mkdir -p \
     /opt/azerothcore/env/dist/bin/logs \
     || { error "Failed to create data directories"; exit 1; }
 
+if [[ -n "${CLIENT_DATA_URL}" ]]; then
+    curl -sL "${CLIENT_DATA_URL}" -o /tmp/azerothcore-client-data.zip &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Downloading client data" \
+        --success_msg "Client data downloaded" --error_msg "Failed to download client data" || exit 1
+
+    unzip -oq /tmp/azerothcore-client-data.zip -d /opt/azerothcore/env/dist/bin &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Extracting client data" \
+        --success_msg "Client data extracted" --error_msg "Failed to extract client data" || exit 1
+
+    rm -f /tmp/azerothcore-client-data.zip
+fi
+
 # ─── Service Setup ──────────────────────────────────────────────────────────────
 
 service \
@@ -223,10 +240,14 @@ info "  Worldserver : port $WORLD_PORT (service: acore-world, screen: screen -r 
 info "  Database    : ${DB_HOST}:${DB_PORT} (user: ${DB_USER})"
 info "  Install dir : /opt/azerothcore/env/dist/"
 info "  Config dir  : /opt/azerothcore/env/dist/etc/"
-warn "Worldserver will NOT accept connections until WoW client data files are in place."
-warn "Extract and copy data into /opt/azerothcore/env/dist/bin/:"
-warn "  maps/  vmaps/  mmaps/  dbc/  Cameras/  gt/"
-warn "Use the extraction tools in /opt/azerothcore/env/dist/bin/ against a WoTLK client."
+if [[ -n "$CLIENT_DATA_URL" ]]; then
+    info "Client data was downloaded and extracted into /opt/azerothcore/env/dist/bin/."
+else
+    warn "Worldserver will NOT accept connections until WoW client data files are in place."
+    warn "Extract and copy data into /opt/azerothcore/env/dist/bin/:"
+    warn "  maps/  vmaps/  mmaps/  dbc/  Cameras/  gt/"
+    warn "Use the extraction tools in /opt/azerothcore/env/dist/bin/ against a WoTLK client."
+fi
 
 if [[ "$DB_MODE" == "local" ]]; then
     info "On first worldserver start, AzerothCore will auto-populate acore_auth, acore_world,"

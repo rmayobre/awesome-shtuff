@@ -145,13 +145,13 @@ bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/w
 
 ### AzerothCore (container)
 
-Builds and installs an AzerothCore (WotLK) server in a new container. Prompts for resources, auth/world server ports, and whether the database is local (installs MySQL in-container) or remote (provide host, port, user, and password). The build step takes 30-60 minutes.
+Builds and installs an AzerothCore (WotLK) server in a new container. Prompts for resources, auth/world server ports, whether the database is local (installs MySQL in-container) or remote (provide host, port, user, and password), and an optional client data zip URL to download and extract automatically (leave blank to add data manually later). The build step takes 30-60 minutes.
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/install.sh)
 ```
 
-Pulls the latest AzerothCore source and rebuilds it in-place inside an existing container. Stops the auth/world services, rebuilds, then restarts them; existing config files and the database are left untouched (worldserver auto-applies pending DB migrations on startup).
+Pulls the latest AzerothCore source and rebuilds it in-place inside an existing container. Stops the auth/world services, rebuilds, then restarts them; existing config files and the database are left untouched (worldserver auto-applies pending DB migrations on startup). Prompts separately whether to also re-download and re-extract the client data, since that step is large and rarely needs to change.
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/update.sh)
@@ -159,13 +159,13 @@ bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/a
 
 ### AzerothCore (host)
 
-Builds and installs an AzerothCore (WotLK) server directly on the host. Prompts for the AzerothCore git URL, auth/world server ports, and whether the database is local (installs MySQL on the host) or remote (provide host, port, user, and password). The build step takes 30-60 minutes.
+Builds and installs an AzerothCore (WotLK) server directly on the host. Prompts for the AzerothCore git URL, auth/world server ports, whether the database is local (installs MySQL on the host) or remote (provide host, port, user, and password), and an optional client data zip URL to download and extract automatically (leave blank to add data manually later). The build step takes 30-60 minutes.
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/install-host.sh)
 ```
 
-Pulls the latest AzerothCore source and rebuilds it in-place on the host. Stops the auth/world services, rebuilds, then restarts them; existing config files and the database are left untouched (worldserver auto-applies pending DB migrations on startup).
+Pulls the latest AzerothCore source and rebuilds it in-place on the host. Stops the auth/world services, rebuilds, then restarts them; existing config files and the database are left untouched (worldserver auto-applies pending DB migrations on startup). Prompts separately whether to also re-download and re-extract the client data, since that step is large and rarely needs to change.
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/azerothcore/update-host.sh)

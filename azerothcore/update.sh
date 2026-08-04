@@ -10,6 +10,19 @@ question "Container name [azerothcore]" && CT_NAME="${answer:-azerothcore}"
 confirm "This will pull the latest AzerothCore source and rebuild in container '${CT_NAME}'. This can take 30-60 minutes. Continue?" \
     && [[ "$answer" != "yes" ]] && { info "Aborted."; exit 0; }
 
+# Client data is large and rarely changes, so only re-download it on request.
+confirm "Update client data too?" && UPDATE_CLIENT_DATA="$answer"
+
+CLIENT_DATA_URL=""
+if [[ "$UPDATE_CLIENT_DATA" == "yes" ]]; then
+    question "Client data zip URL" && CLIENT_DATA_URL="$answer"
+
+    if [[ -z "$CLIENT_DATA_URL" ]]; then
+        error "Client data zip URL is required to update client data."
+        exit 1
+    fi
+fi
+
 # ─── Update Inside Container ───────────────────────────────────────────────────
 
 info "Updating AzerothCore in container '$CT_NAME'..."
@@ -55,6 +68,22 @@ make install -C /opt/azerothcore/build &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing AzerothCore binaries" \
     --success_msg "Binaries installed" --error_msg "Binary installation failed" || exit 1
 
+if [[ -n "${CLIENT_DATA_URL}" ]]; then
+    install unzip &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing unzip" \
+        --success_msg "unzip installed" --error_msg "Failed to install unzip" || exit 1
+
+    wget -q "${CLIENT_DATA_URL}" -O /tmp/azerothcore-client-data.zip &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Downloading client data" \
+        --success_msg "Client data downloaded" --error_msg "Failed to download client data" || exit 1
+
+    unzip -oq /tmp/azerothcore-client-data.zip -d /opt/azerothcore/env/dist/bin &
+    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Extracting client data" \
+        --success_msg "Client data extracted" --error_msg "Failed to extract client data" || exit 1
+
+    rm -f /tmp/azerothcore-client-data.zip
+fi
+
 systemctl start acore-auth &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting authserver" \
     --success_msg "Authserver started" --error_msg "Failed to start authserver" || exit 1
@@ -65,6 +94,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting worldserver" \
 CONTAINER_SCRIPT_EOD
 
 container shell-script --name "$CT_NAME" --path /opt/azerothcore-update.sh \
+    --env "CLIENT_DATA_URL=$CLIENT_DATA_URL" \
     --env "SPINNER_LOADING_STYLE=$SPINNER_LOADING_STYLE" \
     --style "$SPINNER_LOADING_STYLE" &
 monitor $! --style "$SPINNER_LOADING_STYLE" \
@@ -87,3 +117,9 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
 info "AzerothCore updated successfully in container '$CT_NAME'!"
 info "Existing authserver.conf/worldserver.conf were left untouched."
 info "Worldserver will auto-apply any pending database migrations on startup."
+
+if [[ -n "$CLIENT_DATA_URL" ]]; then
+    info "Client data was re-downloaded and extracted into /opt/azerothcore/env/dist/bin/."
+else
+    info "Client data was left untouched."
+fi
