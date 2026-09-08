@@ -127,6 +127,14 @@ Installs OpenCode and runs it as a systemd service inside a new container. Promp
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/opencode/install.sh)
 ```
 
+### Claude Code (container)
+
+Sets up a server development environment in a new container with Node.js and the Claude Code CLI installed. Prompts for distribution, resources, Node.js version, git identity, an optional Anthropic API key, an optional non-root dev user (with password and/or SSH key), and optional SSH server access.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/claude-code/install.sh)
+```
+
 ---
 
 ## CI/CD
