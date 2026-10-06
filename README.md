@@ -119,6 +119,14 @@ Installs Ollama directly on the host. Prompts for listen port, bind address, and
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/ollama/install-host.sh)
 ```
 
+### Kokoro TTS (container)
+
+Installs [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI), an OpenAI-compatible text-to-speech server for the Kokoro-82M model, as a systemd service in a new container. Prompts for distribution, resources, API port, and optional NVIDIA GPU acceleration (CPU by default).
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/kokoro-tts/install.sh)
+```
+
 ### OpenCode (container)
 
 Installs OpenCode and runs it as a systemd service inside a new container. Prompts for distribution, resources, and web UI port.
