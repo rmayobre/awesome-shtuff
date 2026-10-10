@@ -110,7 +110,7 @@ esac
 question "Admin username(s) on the forge, comma-separated (leave blank to skip)" \
     && WP_ADMIN="${answer:-}"
 
-confirm "Allow open user registration?" && WP_OPEN="$answer"
+if confirm "Allow open user registration?"; then WP_OPEN="true"; else WP_OPEN="false"; fi
 
 # Agent configuration
 options "Select the pipeline execution backend for the agent" \
@@ -149,18 +149,12 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates openssl git &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl ca-certificates openssl git --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 if [[ "${WP_BACKEND}" == "docker" ]]; then
-    install docker.io &
-    monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Docker" \
-        --success_msg "Docker installed" --error_msg "Docker installation failed" || exit 1
+    install docker.io --success_msg "Docker installed" --error_msg "Docker installation failed" || exit 1
 
     systemctl enable --now docker &
     monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting Docker service" \
@@ -258,9 +252,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Woodpecker CI installed successfully in container '$CT_NAME'!"
 info "Web UI: ${WP_HOST}"

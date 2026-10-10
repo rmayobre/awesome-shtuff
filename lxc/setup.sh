@@ -12,20 +12,18 @@ LXC_SUBNET="${LXC_BRIDGE_IP%.*}.0/24"
 LXC_NETMASK="255.255.255.0"
 LXC_DHCP_RANGE="${LXC_BRIDGE_IP%.*}.2,${LXC_BRIDGE_IP%.*}.254"
 
-confirm "This will modify kernel parameters and network settings on this host. Continue?" \
-    && [[ "$answer" != "yes" && "$answer" != "true" ]] && { info "Aborted."; exit 0; }
+if ! confirm "This will modify kernel parameters and network settings on this host. Continue?"; then
+    info "Aborted."
+    exit 0
+fi
 
 # ─── Install LXC ─────────────────────────────────────────────────────────────
 
 info "Installing LXC..."
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install lxc lxc-utils uidmap &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing LXC" \
-    --success_msg "LXC installed" --error_msg "LXC installation failed" || exit 1
+install lxc lxc-utils uidmap --success_msg "LXC installed" --error_msg "LXC installation failed" || exit 1
 
 # ─── Network Bridge Configuration ─────────────────────────────────────────────
 
@@ -112,9 +110,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting LXC network brid
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "LXC setup complete!"
 info "  Bridge : lxcbr0 (${LXC_BRIDGE_IP})"

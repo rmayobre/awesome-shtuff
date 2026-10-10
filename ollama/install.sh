@@ -39,10 +39,11 @@ question "Ollama listen port [11434]"  && OLLAMA_PORT="${answer:-11434}"
 
 CT_GPU=""
 CT_GPU_PCIE="no"
-confirm "Enable GPU passthrough (requires GPU on host)?" && ENABLE_GPU="$answer"
-if [[ "$ENABLE_GPU" == "true" || "$ENABLE_GPU" == "yes" ]]; then
+if confirm "Enable GPU passthrough (requires GPU on host)?"; then
     gpu_select && CT_GPU="$answer"
-    confirm "Enable PCIe passthrough mode (PCT only)?" && CT_GPU_PCIE="$answer"
+    if confirm "Enable PCIe passthrough mode (PCT only)?"; then
+        CT_GPU_PCIE="yes"
+    fi
 fi
 
 question "Pull a model after install? (e.g. llama3, mistral — leave blank to skip)" \
@@ -65,7 +66,7 @@ CONTAINER_ARGS=(
 
 if [[ -n "$CT_GPU" ]]; then
     CONTAINER_ARGS+=(--gpu "$CT_GPU")
-    if [[ "$CT_GPU_PCIE" == "true" || "$CT_GPU_PCIE" == "yes" ]]; then
+    if [[ "$CT_GPU_PCIE" == "yes" ]]; then
         CONTAINER_ARGS+=(--pcie)
     fi
 fi
@@ -87,13 +88,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl ca-certificates --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://ollama.com/install.sh | sh &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Ollama" \
@@ -134,10 +131,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Cleaning up" \
-    --success_msg "Cleanup complete" \
+clean --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"
 
 info "Ollama installed successfully in container '$CT_NAME'!"

@@ -84,13 +84,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install mariadb-server &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing MariaDB" \
-    --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
+install mariadb-server --success_msg "MariaDB installed" --error_msg "MariaDB installation failed" || exit 1
 
 systemctl enable --now mariadb &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Starting MariaDB service" \
@@ -132,9 +128,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "MariaDB installed successfully in container '$CT_NAME'!"
 info "  Port : $DB_PORT"

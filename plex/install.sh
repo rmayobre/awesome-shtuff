@@ -75,13 +75,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl wget gnupg2 ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl wget gnupg2 ca-certificates --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://downloads.plex.tv/plex-keys/PlexSign.key \
     | gpg --dearmor -o /usr/share/keyrings/plex-archive-keyring.gpg \
@@ -91,13 +87,9 @@ echo 'deb [signed-by=/usr/share/keyrings/plex-archive-keyring.gpg] https://downl
     > /etc/apt/sources.list.d/plexmediaserver.list \
     || { error "Failed to add Plex repository"; exit 1; }
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
-    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+update --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install plexmediaserver &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Server" \
-    --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
+install plexmediaserver --success_msg "Plex Media Server installed" --error_msg "Plex installation failed" || exit 1
 
 if [[ -n "${MEDIA_PATH}" ]]; then
     mkdir -p /media \
@@ -124,9 +116,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Plex Media Ser
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Plex Media Server installed successfully in container '$CT_NAME'!"
 info "Access the web UI at: http://<container-ip>:${PLEX_PORT}/web"

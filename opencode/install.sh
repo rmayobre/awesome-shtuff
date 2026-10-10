@@ -66,13 +66,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl ca-certificates &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl ca-certificates --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://opencode.ai/install | bash &
 monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing OpenCode" \
@@ -106,10 +102,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" \
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" \
-    --message "Cleaning up" \
-    --success_msg "Cleanup complete" \
+clean --success_msg "Cleanup complete" \
     --error_msg "Cleanup failed"
 
 info "OpenCode installed successfully in container '$CT_NAME'!"

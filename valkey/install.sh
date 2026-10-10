@@ -73,13 +73,9 @@ CONTAINER_SCRIPT
 #!/bin/bash
 source <(wget -qO- https://raw.githubusercontent.com/rmayobre/shtuff/main/shtuff-remote.sh)
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating packages" \
-    --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
+update --success_msg "Packages updated" --error_msg "Package update failed" || exit 1
 
-install curl gpg &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing dependencies" \
-    --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
+install curl gpg --success_msg "Dependencies installed" --error_msg "Dependency installation failed" || exit 1
 
 curl -fsSL https://packages.valkey.io/valkey-signing.gpg \
     | gpg --dearmor -o /usr/share/keyrings/valkey-archive-keyring.gpg \
@@ -89,13 +85,9 @@ echo 'deb [signed-by=/usr/share/keyrings/valkey-archive-keyring.gpg] https://pac
     | tee /etc/apt/sources.list.d/valkey.list \
     || { error "Failed to add Valkey repository"; exit 1; }
 
-update &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Updating package lists" \
-    --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
+update --success_msg "Package lists updated" --error_msg "Package list update failed" || exit 1
 
-install valkey &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing Valkey" \
-    --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
+install valkey --success_msg "Valkey installed" --error_msg "Valkey installation failed" || exit 1
 
 sed -i 's/^port .*/port ${VALKEY_PORT}/' /etc/valkey/valkey.conf \
     || { error "Failed to configure Valkey port"; exit 1; }
@@ -146,9 +138,7 @@ monitor $! --style "$SPINNER_LOADING_STYLE" --message "Installing and configurin
 
 # ─── Host Cleanup ─────────────────────────────────────────────────────────────
 
-clean &
-monitor $! --style "$SPINNER_LOADING_STYLE" --message "Cleaning up" \
-    --success_msg "Cleanup complete" --error_msg "Cleanup failed"
+clean --success_msg "Cleanup complete" --error_msg "Cleanup failed"
 
 info "Valkey installed successfully in container '$CT_NAME'!"
 info "Valkey is listening on port $VALKEY_PORT."
