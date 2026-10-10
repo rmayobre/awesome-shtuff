@@ -127,6 +127,14 @@ Installs OpenCode and runs it as a systemd service inside a new container. Promp
 bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/opencode/install.sh)
 ```
 
+### LibreChat (container)
+
+Installs LibreChat and runs it as a systemd service inside a new container. Prompts for resources, web UI port, app title, user registration, whether MongoDB is local (installed in-container) or remote (provide a connection URI), optional Meilisearch search indexing, and AI provider API keys (OpenAI, Anthropic, Google, Groq). JWT and credential encryption secrets are generated automatically.
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/rmayobre/awesome-shtuff/main/librechat/install.sh)
+```
+
 ---
 
 ## CI/CD
